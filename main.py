@@ -1,6 +1,16 @@
 import os
+import threading, http.server, socketserver
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+
+# ===== كود مجاني عشان Render ما يلف - ما تمسحو =====
+PORT = int(os.environ.get("PORT", 10000))
+def keep_alive():
+    handler = http.server.SimpleHTTPRequestHandler
+    with socketserver.TCPServer(("", PORT), handler) as httpd:
+        httpd.serve_forever()
+threading.Thread(target=keep_alive, daemon=True).start()
+# ===============================================
 
 TOKEN = os.environ.get("BOT_TOKEN")
 BANKK_NUMBER = "8994176"
@@ -82,11 +92,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await q.answer()
     data = q.data
     user_id = q.from_user.id
-
     if data == "main":
         await start(update, context)
         return
-
     if data.startswith("cat_"):
         cat = data[4:]
         kb = []
@@ -95,48 +103,27 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         kb.append([InlineKeyboardButton("رجوع", callback_data="main")])
         await q.edit_message_text(CATEGORY_NAMES[cat], reply_markup=InlineKeyboardMarkup(kb))
         return
-
     if data.startswith("item_"):
         rest = data[5:]
         idx = int(rest.rsplit("_", 1)[-1])
         cat = rest.rsplit("_", 1)[0]
         item = PACKAGES[cat][idx]
-        name = item[1]
-        price = item[2]
-        method = item[3]
-        user_state[user_id] = {"name": name, "price": price, "method": method}
-        kb = [
-            [InlineKeyboardButton("اطلب الان", callback_data="order_now")],
-            [InlineKeyboardButton("رجوع", callback_data="cat_" + cat)],
-        ]
-        txt = name + "\nالسعر: " + price + "\nالتسليم: في غضون دقائق"
-        await q.edit_message_text(txt, reply_markup=InlineKeyboardMarkup(kb))
+        user_state[user_id] = {"name": item[1], "price": item[2], "method": item[3]}
+        kb = [[InlineKeyboardButton("اطلب الان", callback_data="order_now")],[InlineKeyboardButton("رجوع", callback_data="cat_" + cat)]]
+        await q.edit_message_text(item[1] + "\nالسعر: " + item[2] + "\nالتسليم: في غضون دقائق", reply_markup=InlineKeyboardMarkup(kb))
         return
-
     if data == "order_now":
         order = user_state.get(user_id)
         if not order:
             await q.edit_message_text("اختار باقة أولاً", reply_markup=main_menu())
             return
         method = order["method"]
-        txt = "طلبك: " + order["name"] + "\n"
-        txt = txt + "السعر: " + order["price"] + "\n\n"
-        txt = txt + "حول على بنكك:\n"
-        txt = txt + "بنكك: " + BANKK_NUMBER + "\n"
-        txt = txt + "الاسم: " + BANKK_NAME + "\n\n"
+        txt = "طلبك: " + order["name"] + "\nالسعر: " + order["price"] + "\n\nحول على بنكك:\nبنكك: " + BANKK_NUMBER + "\nالاسم: " + BANKK_NAME + "\n\n"
         if method == "id":
-            txt = txt + "بعد التحويل رسل لينا في رسالة واحدة:\n"
-            txt = txt + "1- صورة اشعار التحويل\n"
-            txt = txt + "2- الـ ID حقك\n"
-            txt = txt + "مثال: ID: 123456789"
+            txt += "بعد التحويل رسل لينا في رسالة واحدة:\n1- صورة اشعار التحويل\n2- الـ ID حقك\nمثال: ID: 123456789"
         else:
-            txt = txt + "بعد التحويل رسل لينا في رسالة واحدة:\n"
-            txt = txt + "1- صورة اشعار التحويل\n"
-            txt = txt + "2- ايميل حسابك\n"
-            txt = txt + "3- كلمة السر\n"
-            txt = txt + "4- ال ID لو موجود\n"
-            txt = txt + "مثال:\nالايميل: xxx@gmail.com\nكلمة السر: xxx\nال ID: xxx"
-        txt = txt + "\n\nرسل المعلومات هسي و حنجهز ليك الطلب."
+            txt += "بعد التحويل رسل لينا في رسالة واحدة:\n1- صورة اشعار التحويل\n2- ايميل حسابك\n3- كلمة السر\n4- ال ID لو موجود\nمثال:\nالايميل: xxx@gmail.com\nكلمة السر: xxx\nال ID: xxx"
+        txt += "\n\nرسل المعلومات هسي و حنجهز ليك الطلب."
         user_state[user_id]["waiting"] = True
         await q.edit_message_text(txt, reply_markup=back_to_main())
         return
@@ -148,18 +135,9 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not order or not order.get("waiting"):
         await update.message.reply_text("اهلا بيك اختار من القائمة /start")
         return
-
-    header = "طلب جديد!\n"
-    header = header + "الزبون: " + user.first_name + "\n"
-    header = header + "يوزر التليجرام: " + str(user_id) + "\n"
-    header = header + "الباقة: " + order["name"] + "\n"
-    header = header + "السعر: " + order["price"] + "\n"
-    if order["method"] == "id":
-        header = header + "الطريقة: عبر ID\n"
-    else:
-        header = header + "الطريقة: عبر الحساب\n"
-    header = header + "بيانات الزبون:\n"
-
+    header = "طلب جديد!\nالزبون: " + user.first_name + "\nيوزر التليجرام: " + str(user_id) + "\nالباقة: " + order["name"] + "\nالسعر: " + order["price"] + "\n"
+    header += "الطريقة: عبر ID\n" if order["method"] == "id" else "الطريقة: عبر الحساب\n"
+    header += "بيانات الزبون:\n"
     try:
         if update.message.photo:
             caption = update.message.caption or ""
@@ -167,35 +145,40 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("وصلت صورة الاشعار ✅\nهسي رسل الـ ID حقك في رسالة براهو")
             return
         else:
-            txt = header + update.message.text
-            await context.bot.send_message(chat_id=ADMIN_ID, text=txt, reply_markup=admin_keyboard(user_id))
+            await context.bot.send_message(chat_id=ADMIN_ID, text=header + update.message.text, reply_markup=admin_keyboard(user_id))
             await update.message.reply_text("تم استلام طلبك! حنراجع التحويل ونشحن ليك.")
             user_state[user_id]["waiting"] = False
     except Exception as e:
         print(e)
         await update.message.reply_text("حصل خطأ، حاول تاني")
 
-# ===== أزرار الأدمن الجديدة =====
 async def admin_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    data = q.data
-    # done_123 / fail_123 / dup_123 / unavail_123
-    action, user_id = data.rsplit("_", 1)
+    action, user_id = q.data.rsplit("_", 1)
     user_id = int(user_id)
-
     if action == "done":
-        await context.bot.send_message(user_id, "تم ✅ تم شحن طلبك بنجاح، شكراً ليك ❤️")
-        await q.edit_message_text(q.message.text + "\n\n✅ تم التنفيذ" if q.message.text else "✅ تم التنفيذ")
+        msg = "تم ✅ تم شحن طلبك بنجاح، شكراً ليك ❤️"
+        suffix = "\n\n✅ تم التنفيذ"
     elif action == "fail":
-        await context.bot.send_message(user_id, "عذراً ❌ فشل طلبك، وتم إرجاع المبلغ لحسابك. راسلنا لو ما وصلك.")
-        await q.edit_message_text((q.message.text or "") + "\n\n❌ فشل وتم الإرجاع")
+        msg = "عذراً ❌ فشل طلبك، وتم إرجاع المبلغ لحسابك. راسلنا لو ما وصلك."
+        suffix = "\n\n❌ فشل وتم الإرجاع"
     elif action == "dup":
-        await context.bot.send_message(user_id, "تنبيه ⚠️ الإشعار ده مكرر، تم تجاهل الطلب المكرر.")
-        await q.edit_message_text((q.message.text or q.message.caption or "") + "\n\n⚠️ إشعار مكرر")
+        msg = "تنبيه ⚠️ الإشعار ده مكرر، تم تجاهل الطلب المكرر."
+        suffix = "\n\n⚠️ إشعار مكرر"
     elif action == "unavail":
-        await context.bot.send_message(user_id, "عذراً 🚫 الباقة دي غير متوفرة حالياً. حنرجع ليك المبلغ، أو اختار باقة تانية من القائمة.")
-        await q.edit_message_text((q.message.text or q.message.caption or "") + "\n\n🚫 غير متوفر")
+        msg = "عذراً 🚫 الباقة دي غير متوفرة حالياً. حنرجع ليك المبلغ، أو اختار باقة تانية من القائمة."
+        suffix = "\n\n🚫 غير متوفر"
+    else:
+        return
+    await context.bot.send_message(user_id, msg)
+    try:
+        if q.message.photo:
+            await q.edit_message_caption((q.message.caption or "") + suffix)
+        else:
+            await q.edit_message_text((q.message.text or "") + suffix)
+    except Exception as e:
+        print("edit error:", e)
 
 def main():
     app = Application.builder().token(TOKEN).build()
