@@ -83,6 +83,31 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data.startswith("cat_"):
+    # --- الانزال الجوي Airdrop ---
+    if data.startswith("airdrop_") or data.startswith("buy_airdrop_") or data.startswith("drop_"):
+        # امسح الرقم من اسم الزر
+        # مثال: airdrop_1 -> 1 دولار
+        price_num = data.split("_")[-1]
+        if price_num == "1":
+            name = "انزال جوي $1"
+            price = "13,000 جنيه"
+        elif price_num == "2":
+            name = "انزال جوي $2"
+            price = "26,000 جنيه"
+        else:
+            name = "انزال جوي $" + price_num
+            price = price_num + " دولار"
+
+        user_state[user_id] = {"name": name, "price": price, "waiting": True, "method": "airdrop"}
+        await query.edit_message_text(
+            "اخترت: " + name + "\n"
+            "السعر: " + price + "\n\n"
+            "حول المبلغ لحسابنا:\n"
+            "بنكك: 1003 0944 2277 0001\n"
+            "باسم: ميسر معتز صالح فضل المولى\n\n"
+            "بعد التحويل رسل صورة الاشعار وبعدها رسل الـ ID حقك"
+        )
+        return
         cat = data[4:]
         kb = []
         for i, item in enumerate(PACKAGES[cat]):
