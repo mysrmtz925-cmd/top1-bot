@@ -7,7 +7,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 
 TOKEN = os.environ.get("BOT_TOKEN")
 BANKK_NUMBER = "8994176"
-BANKK_NAME = "ميسر معتز"
+BANKK_NAME = "ميسر"
 ADMIN_ID = 7269956912
 DB = "wallet.db"
 
@@ -59,14 +59,19 @@ user_state = {}
 def init_db():
     con = sqlite3.connect(DB)
     cur = con.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, first_name TEXT, balance INTEGER DEFAULT 0)")
+    cur.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, first_name TEXT, balance INTEGER DEFAULT 0, blocked INTEGER DEFAULT 0)")
+    # لو الداتا بيز قديمة وما فيها عمود blocked نضيفو
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN blocked INTEGER DEFAULT 0")
+    except:
+        pass
     con.commit()
     con.close()
 
 def ensure_user(user):
     con = sqlite3.connect(DB)
     cur = con.cursor()
-    cur.execute("INSERT OR IGNORE INTO users (user_id, username, first_name, balance) VALUES (?,?,?,0)", (user.id, user.username or "", user.first_name or ""))
+    cur.execute("INSERT OR IGNORE INTO users (user_id, username, first_name, balance, blocked) VALUES (?,?,?,0,0)", (user.id, user.username or "", user.first_name or ""))
     cur.execute("UPDATE users SET username=?, first_name=? WHERE user_id=?", (user.username or "", user.first_name or "", user.id))
     con.commit()
     con.close()
@@ -95,6 +100,29 @@ def get_all_users():
     con.close()
     return rows
 
+def is_blocked(user_id):
+    con = sqlite3.connect(DB)
+    cur = con.cursor()
+    cur.execute("SELECT blocked FROM users WHERE user_id=?", (user_id,))
+    row = cur.fetchone()
+    con.close()
+    return bool(row and row[0] == 1)
+
+def set_blocked(user_id, blocked):
+    con = sqlite3.connect(DB)
+    cur = con.cursor()
+    cur.execute("UPDATE users SET blocked=? WHERE user_id=?", (1 if blocked else 0, user_id))
+    con.commit()
+    con.close()
+
+def get_blocked_users():
+    con = sqlite3.connect(DB)
+    cur = con.cursor()
+    cur.execute("SELECT user_id, username, first_name FROM users WHERE blocked=1")
+    rows = cur.fetchall()
+    con.close()
+    return rows
+
 def parse_price(price_text):
     nums = re.findall(r'\d+', price_text.replace(",", ""))
     return int(nums[0]) if nums else 0
@@ -117,6 +145,17 @@ def main_menu(user_id=None):
 def back_to_main():
     return InlineKeyboardMarkup([[InlineKeyboardButton("الرئيسية", callback_data="main")]])
 
+def admin_menu_keyboard():
+    kb = [
+        [InlineKeyboardButton("📢 رسالة جماعية", callback_data="admin_broadcast_start")],
+        [InlineKeyboardButton("🚫 حظر مستخدم", callback_data="admin_block_start")],
+        [InlineKeyboardButton("✅ فك حظر مستخدم", callback_data="admin_unblock_start")],
+        [InlineKeyboardButton("📋 قائمة المحظورين", callback_data="admin_blocked_list")],
+        [InlineKeyboardButton("💰 كل الأرصدة", callback_data="admin_balances")],
+        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main")],
+    ]
+    return InlineKeyboardMarkup(kb)
+
 def admin_keyboard(user_id, price_num=0):
     kb = [
         [InlineKeyboardButton("✅ تم الطلب", callback_data=f"done_{user_id}_{price_num}")],
@@ -124,6 +163,7 @@ def admin_keyboard(user_id, price_num=0):
         [InlineKeyboardButton("⚠️ إشعار مكرر", callback_data=f"dup_{user_id}_{price_num}")],
         [InlineKeyboardButton("🚫 إشعار غير صحيح", callback_data=f"wrong_{user_id}_{price_num}")],
         [InlineKeyboardButton("🚫 غير متوفر", callback_data=f"unavail_{user_id}_{price_num}")],
+        [InlineKeyboardButton("🚫 حظر الزبون ده", callback_data=f"admin_block_user_{user_id}")],
     ]
     return InlineKeyboardMarkup(kb)
 
@@ -133,6 +173,7 @@ def topup_admin_keyboard(user_id, amount):
         [InlineKeyboardButton("❌ رفض", callback_data=f"topup_no_{user_id}_{amount}")],
         [InlineKeyboardButton("⚠️ إشعار مكرر", callback_data=f"topup_dup_{user_id}_{amount}")],
         [InlineKeyboardButton("🚫 إشعار غير صحيح", callback_data=f"topup_wrong_{user_id}_{amount}")],
+        [InlineKeyboardButton("🚫 حظر الزبون ده", callback_data=f"admin_block_user_{user_id}")],
     ]
     return InlineKeyboardMarkup(kb)
 
@@ -140,6 +181,13 @@ def topup_admin_keyboard(user_id, amount):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     ensure_user(user)
+    if is_blocked(user.id):
+        txt = "🚫 تم حظرك من استخدام البوت.\nراسل الدعم لو شايف ده غلط: @TOP1MOYASAR"
+        if update.message:
+            await update.message.reply_text(txt)
+        else:
+            await update.callback_query.edit_message_text(txt)
+        return
     bal = get_balance(user.id)
     text = f"اهلا بيك في TOP 1 👑\n💰 محفظتك: {bal:,} SDG\nاختار من القائمة:"
     if update.message:
@@ -150,6 +198,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def wallet_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     ensure_user(user)
+    if is_blocked(user.id):
+        await update.message.reply_text("🚫 تم حظرك من استخدام البوت.")
+        return
     bal = get_balance(user.id)
     await update.message.reply_text(f"💰 محفظتي\n\nرصيدك الحالي: {bal:,} SDG\n\nلشحن المحفظة دوس زر تغذية محفظتي من القائمة", reply_markup=back_to_main())
 
@@ -158,11 +209,12 @@ async def admin_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     users = get_all_users()
     total = sum(u[3] for u in users)
-    txt = f"📊 لوحة الأدمن - TOP 1\n\nعدد المستخدمين: {len(users)}\nإجمالي الأرصدة: {total:,} SDG\n\nآخر 10:\n"
+    blocked = get_blocked_users()
+    txt = f"📊 لوحة الأدمن - TOP 1\n\nعدد المستخدمين: {len(users)}\nإجمالي الأرصدة: {total:,} SDG\nالمحظورين: {len(blocked)}\n\nآخر 10:\n"
     for u in users[:10]:
         txt += f"- {u[2]} (@{u[1]}) - {u[3]:,} SDG - ID: {u[0]}\n"
-    txt += "\nأوامر:\n/balances - كل الأرصدة\n/add [ID] [المبلغ] - إضافة رصيد\n/deduct [ID] [المبلغ] - خصم رصيد\n/msg [ID] [الرسالة] - مراسلة زول بالـ ID"
-    await update.message.reply_text(txt)
+    txt += "\nأوامر سريعة:\n/balances - كل الأرصدة\n/add [ID] [المبلغ]\n/deduct [ID] [المبلغ]\n/msg [ID] [الرسالة]\n/block [ID]\n/unblock [ID]\n/broadcast [الرسالة]"
+    await update.message.reply_text(txt, reply_markup=admin_menu_keyboard())
 
 async def balances_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -216,8 +268,59 @@ async def msg_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         await context.bot.send_message(target, text)
         await update.message.reply_text(f"✅ تم ارسال الرسالة لـ {target}")
-    except Exception as e:
-        await update.message.reply_text(f"ما قدرت ارسل، اتأكد انو الزول بدأ البوت قبل كدا.\nالاستخدام: /msg [ID] [الرسالة]\nمثال: /msg 8673670577 اهلا بيك تم شحن محفظتك")
+    except:
+        await update.message.reply_text("ما قدرت ارسل، اتأكد انو الزول بدأ البوت قبل كدا.\nالاستخدام: /msg [ID] [الرسالة]")
+
+async def block_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return
+    try:
+        target = int(context.args[0])
+        ensure_user(type("obj", (), {"id": target, "username": "", "first_name": "User"})())
+        set_blocked(target, True)
+        await update.message.reply_text(f"🚫 تم حظر المستخدم {target} من البوت.")
+        try:
+            await context.bot.send_message(target, "🚫 تم حظرك من استخدام بوت TOP 1.\nراسل الدعم لو شايف ده غلط: @TOP1MOYASAR")
+        except:
+            pass
+    except:
+        await update.message.reply_text("الاستخدام: /block [ID]\nمثال: /block 123456")
+
+async def unblock_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return
+    try:
+        target = int(context.args[0])
+        set_blocked(target, False)
+        await update.message.reply_text(f"✅ تم فك حظر المستخدم {target}.")
+        try:
+            await context.bot.send_message(target, "✅ تم فك الحظر عنك، تقدر تستخدم بوت TOP 1 تاني. اكتب /start")
+        except:
+            pass
+    except:
+        await update.message.reply_text("الاستخدام: /unblock [ID]")
+
+async def broadcast_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return
+    text = " ".join(context.args)
+    if not text:
+        await update.message.reply_text("اكتب الرسالة: /broadcast [الرسالة]\nمثال: /broadcast عرض جديد 🔥 خصم 20% اليوم")
+        return
+    users = get_all_users()
+    await update.message.reply_text(f"📢 جاري الارسال لـ {len(users)} مستخدم...")
+    sent = 0
+    failed = 0
+    for u in users:
+        uid = u[0]
+        if uid == ADMIN_ID or is_blocked(uid):
+            continue
+        try:
+            await context.bot.send_message(uid, f"📢 رسالة من TOP 1 👑\n\n{text}")
+            sent += 1
+        except:
+            failed += 1
+    await update.message.reply_text(f"✅ تم الانتهاء\nتم الارسال: {sent}\nفشل: {failed}")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -225,6 +328,69 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = q.data
     user_id = q.from_user.id
     ensure_user(q.from_user)
+
+    # --- أزرار الأدمن ---
+    if data == "admin_broadcast_start" and user_id == ADMIN_ID:
+        user_state[user_id] = {"waiting_broadcast": True}
+        await q.edit_message_text("📢 رسالة جماعية\n\nاكتب الرسالة الداير ترسلها لكل المستخدمين في رسالة هسي:\n(الرسالة حتترسل لكل الناس البدت البوت)", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("إلغاء", callback_data="admin_back")]]))
+        return
+    if data == "admin_block_start" and user_id == ADMIN_ID:
+        user_state[user_id] = {"waiting_block_id": True}
+        await q.edit_message_text("🚫 حظر مستخدم\n\nاكتب ID الزول الداير تحظرو:", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("إلغاء", callback_data="admin_back")]]))
+        return
+    if data == "admin_unblock_start" and user_id == ADMIN_ID:
+        user_state[user_id] = {"waiting_unblock_id": True}
+        await q.edit_message_text("✅ فك حظر مستخدم\n\nاكتب ID الزول الداير تفك حظرو:", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("إلغاء", callback_data="admin_back")]]))
+        return
+    if data == "admin_blocked_list" and user_id == ADMIN_ID:
+        blocked = get_blocked_users()
+        if not blocked:
+            await q.edit_message_text("لا يوجد مستخدمين محظورين.", reply_markup=admin_menu_keyboard())
+            return
+        kb = []
+        for b in blocked:
+            kb.append([InlineKeyboardButton(f"✅ فك حظر {b[2]} - {b[0]}", callback_data=f"admin_unblock_user_{b[0]}")])
+        kb.append([InlineKeyboardButton("رجوع", callback_data="admin_back")])
+        await q.edit_message_text(f"📋 المحظورين ({len(blocked)}):", reply_markup=InlineKeyboardMarkup(kb))
+        return
+    if data == "admin_balances" and user_id == ADMIN_ID:
+        users = get_all_users()
+        txt = "💰 قائمة أرصدة العملاء\n\n"
+        for i, u in enumerate(users[:20], 1):
+            txt += f"{i}. {u[2]} (@{u[1]}) - {u[3]:,} SDG - {u[0]}\n"
+        await q.edit_message_text(txt, reply_markup=admin_menu_keyboard())
+        return
+    if data == "admin_back" and user_id == ADMIN_ID:
+        user_state[user_id] = {}
+        # رجوع للوحة الأدمن
+        users = get_all_users()
+        total = sum(u[3] for u in users)
+        txt = f"📊 لوحة الأدمن - TOP 1\n\nعدد المستخدمين: {len(users)}\nإجمالي الأرصدة: {total:,} SDG\n\nاختار:"
+        await q.edit_message_text(txt, reply_markup=admin_menu_keyboard())
+        return
+    if data.startswith("admin_block_user_") and user_id == ADMIN_ID:
+        target = int(data.replace("admin_block_user_", ""))
+        set_blocked(target, True)
+        await q.edit_message_text(f"🚫 تم حظر {target}", reply_markup=admin_menu_keyboard())
+        try:
+            await context.bot.send_message(target, "🚫 تم حظرك من استخدام بوت TOP 1.")
+        except:
+            pass
+        return
+    if data.startswith("admin_unblock_user_") and user_id == ADMIN_ID:
+        target = int(data.replace("admin_unblock_user_", ""))
+        set_blocked(target, False)
+        await q.edit_message_text(f"✅ تم فك حظر {target}", reply_markup=admin_menu_keyboard())
+        try:
+            await context.bot.send_message(target, "✅ تم فك الحظر عنك، اكتب /start")
+        except:
+            pass
+        return
+
+    if is_blocked(user_id):
+        await q.edit_message_text("🚫 تم حظرك من استخدام البوت.")
+        return
+
     if data == "main":
         await start(update, context)
         return
@@ -237,13 +403,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await q.edit_message_text(f"💰 محفظتي\n\nرصيدك: {bal:,} SDG\n\nدوس تغذية عشان تشحن.", reply_markup=InlineKeyboardMarkup(kb))
         return
 
-    # تغذية المحفظة - طلب المبلغ
     if data == "topup_start":
         user_state[user_id] = {"waiting_topup_amount": True}
         await q.edit_message_text("💳 تغذية محفظتي\n\nاكتب المبلغ الداير تشحن بيهو المحفظة\nمثال: 10000\n\nاكتبو في رسالة هسي:", reply_markup=back_to_main())
         return
 
-    # أزرار الأدمن لتغذية المحفظة
     if data.startswith("topup_"):
         parts = data.rsplit("_", 2)
         sub = data.split("_")[1]
@@ -310,6 +474,62 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
     ensure_user(user)
     state = user_state.get(user_id, {})
+
+    # --- الأدمن: رسالة جماعية ---
+    if user_id == ADMIN_ID and state.get("waiting_broadcast") and update.message.text:
+        text = update.message.text
+        users = get_all_users()
+        await update.message.reply_text(f"📢 جاري الارسال لـ {len(users)} مستخدم...")
+        sent = 0
+        failed = 0
+        for u in users:
+            uid = u[0]
+            if uid == ADMIN_ID or is_blocked(uid):
+                continue
+            try:
+                await context.bot.send_message(uid, f"📢 رسالة من TOP 1 👑\n\n{text}")
+                sent += 1
+            except:
+                failed += 1
+        user_state[user_id] = {}
+        await update.message.reply_text(f"✅ تم الانتهاء\nتم الارسال: {sent}\nفشل: {failed}")
+        return
+
+    # --- الأدمن: حظر ---
+    if user_id == ADMIN_ID and state.get("waiting_block_id") and update.message.text:
+        nums = re.findall(r'\d+', update.message.text)
+        if not nums:
+            await update.message.reply_text("اكتب ID بالأرقام بس")
+            return
+        target = int(nums[0])
+        set_blocked(target, True)
+        user_state[user_id] = {}
+        await update.message.reply_text(f"🚫 تم حظر {target}")
+        try:
+            await context.bot.send_message(target, "🚫 تم حظرك من استخدام بوت TOP 1.")
+        except:
+            pass
+        return
+
+    # --- الأدمن: فك حظر ---
+    if user_id == ADMIN_ID and state.get("waiting_unblock_id") and update.message.text:
+        nums = re.findall(r'\d+', update.message.text)
+        if not nums:
+            await update.message.reply_text("اكتب ID بالأرقام بس")
+            return
+        target = int(nums[0])
+        set_blocked(target, False)
+        user_state[user_id] = {}
+        await update.message.reply_text(f"✅ تم فك حظر {target}")
+        try:
+            await context.bot.send_message(target, "✅ تم فك الحظر عنك، اكتب /start")
+        except:
+            pass
+        return
+
+    if is_blocked(user_id):
+        await update.message.reply_text("🚫 تم حظرك من استخدام البوت.")
+        return
 
     # الزبون كتب مبلغ التغذية
     if state.get("waiting_topup_amount") and update.message.text:
@@ -420,6 +640,9 @@ def main():
     app.add_handler(CommandHandler("add", add_cmd))
     app.add_handler(CommandHandler("deduct", deduct_cmd))
     app.add_handler(CommandHandler("msg", msg_cmd))
+    app.add_handler(CommandHandler("block", block_cmd))
+    app.add_handler(CommandHandler("unblock", unblock_cmd))
+    app.add_handler(CommandHandler("broadcast", broadcast_cmd))
     app.add_handler(CallbackQueryHandler(admin_button, pattern="^(done|fail|dup|wrong|unavail)_"))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO, receive_message))
