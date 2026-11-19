@@ -60,7 +60,6 @@ def init_db():
     con = sqlite3.connect(DB)
     cur = con.cursor()
     cur.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT, first_name TEXT, balance INTEGER DEFAULT 0, blocked INTEGER DEFAULT 0)")
-    # لو الداتا بيز قديمة وما فيها عمود blocked نضيفو
     try:
         cur.execute("ALTER TABLE users ADD COLUMN blocked INTEGER DEFAULT 0")
     except:
@@ -147,7 +146,8 @@ def back_to_main():
 
 def admin_menu_keyboard():
     kb = [
-        [InlineKeyboardButton("📢 رسالة جماعية", callback_data="admin_broadcast_start")],
+        [InlineKeyboardButton("✉️ رسالة لزول محدد (نص + صورة)", callback_data="admin_msg_start")],
+        [InlineKeyboardButton("📢 رسالة جماعية (نص أو صورة)", callback_data="admin_broadcast_start")],
         [InlineKeyboardButton("🚫 حظر مستخدم", callback_data="admin_block_start")],
         [InlineKeyboardButton("✅ فك حظر مستخدم", callback_data="admin_unblock_start")],
         [InlineKeyboardButton("📋 قائمة المحظورين", callback_data="admin_blocked_list")],
@@ -213,7 +213,7 @@ async def admin_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     txt = f"📊 لوحة الأدمن - TOP 1\n\nعدد المستخدمين: {len(users)}\nإجمالي الأرصدة: {total:,} SDG\nالمحظورين: {len(blocked)}\n\nآخر 10:\n"
     for u in users[:10]:
         txt += f"- {u[2]} (@{u[1]}) - {u[3]:,} SDG - ID: {u[0]}\n"
-    txt += "\nأوامر سريعة:\n/balances - كل الأرصدة\n/add [ID] [المبلغ]\n/deduct [ID] [المبلغ]\n/msg [ID] [الرسالة]\n/block [ID]\n/unblock [ID]\n/broadcast [الرسالة]"
+    txt += "\nأوامر سريعة:\n/balances - كل الأرصدة\n/add [ID] [المبلغ]\n/deduct [ID] [المبلغ]\n/msg [ID] [الرسالة] - أو ارسل صورة وتعليقها /msg [ID] [نص]\n/block [ID]\n/unblock [ID]\n/broadcast [الرسالة]"
     await update.message.reply_text(txt, reply_markup=admin_menu_keyboard())
 
 async def balances_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -260,16 +260,32 @@ async def deduct_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def msg_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
+    raw_text = update.message.text or update.message.caption or ""
+    parts = raw_text.split()
     try:
-        target = int(context.args[0])
-        text = " ".join(context.args[1:])
+        if len(parts) >= 2 and parts[0].startswith("/msg"):
+            target = int(re.findall(r'\d+', parts[1])[0])
+            text = " ".join(parts[2:])
+        else:
+            target = int(context.args[0])
+            text = " ".join(context.args[1:])
+        if update.message.photo:
+            await context.bot.send_photo(target, photo=update.message.photo[-1].file_id, caption=text if text else "📩 رسالة من TOP 1")
+            await update.message.reply_text(f"✅ تم ارسال الصورة + النص لـ {target}")
+            return
+        if update.message.reply_to_message and update.message.reply_to_message.photo:
+            photo = update.message.reply_to_message.photo[-1].file_id
+            await context.bot.send_photo(target, photo=photo, caption=text if text else "📩 رسالة من TOP 1")
+            await update.message.reply_text(f"✅ تم ارسال الصورة لـ {target}")
+            return
         if not text:
             await update.message.reply_text("اكتب الرسالة: /msg [ID] [الرسالة]")
             return
         await context.bot.send_message(target, text)
         await update.message.reply_text(f"✅ تم ارسال الرسالة لـ {target}")
-    except:
-        await update.message.reply_text("ما قدرت ارسل، اتأكد انو الزول بدأ البوت قبل كدا.\nالاستخدام: /msg [ID] [الرسالة]")
+    except Exception as e:
+        print(e)
+        await update.message.reply_text("ما قدرت ارسل.\nجرب:\n/msg 123456 اهلا بيك\nأو ارسل صورة واكتب في تعليقها: /msg 123456 اهلا بيك")
 
 async def block_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -303,14 +319,29 @@ async def unblock_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def broadcast_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
+    if update.message.photo:
+        caption = update.message.caption or ""
+        caption = caption.replace("/broadcast", "").strip()
+        users = get_all_users()
+        sent = failed = 0
+        for u in users:
+            uid = u[0]
+            if uid == ADMIN_ID or is_blocked(uid):
+                continue
+            try:
+                await context.bot.send_photo(uid, photo=update.message.photo[-1].file_id, caption=f"📢 رسالة من TOP 1 👑\n\n{caption}" if caption else "📢 رسالة من TOP 1 👑")
+                sent += 1
+            except:
+                failed += 1
+        await update.message.reply_text(f"✅ تم الانتهاء\nتم: {sent} | فشل: {failed}")
+        return
     text = " ".join(context.args)
     if not text:
-        await update.message.reply_text("اكتب الرسالة: /broadcast [الرسالة]\nمثال: /broadcast عرض جديد 🔥 خصم 20% اليوم")
+        await update.message.reply_text("اكتب الرسالة: /broadcast [الرسالة]")
         return
     users = get_all_users()
     await update.message.reply_text(f"📢 جاري الارسال لـ {len(users)} مستخدم...")
-    sent = 0
-    failed = 0
+    sent = failed = 0
     for u in users:
         uid = u[0]
         if uid == ADMIN_ID or is_blocked(uid):
@@ -329,10 +360,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = q.from_user.id
     ensure_user(q.from_user)
 
-    # --- أزرار الأدمن ---
+    if data == "admin_msg_start" and user_id == ADMIN_ID:
+        user_state[user_id] = {"waiting_msg_id": True}
+        await q.edit_message_text("✉️ رسالة لزول محدد\n\nاكتب ID الزول الداير ترسل ليهو:", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("إلغاء", callback_data="admin_back")]]))
+        return
     if data == "admin_broadcast_start" and user_id == ADMIN_ID:
         user_state[user_id] = {"waiting_broadcast": True}
-        await q.edit_message_text("📢 رسالة جماعية\n\nاكتب الرسالة الداير ترسلها لكل المستخدمين في رسالة هسي:\n(الرسالة حتترسل لكل الناس البدت البوت)", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("إلغاء", callback_data="admin_back")]]))
+        await q.edit_message_text("📢 رسالة جماعية\n\nارسل هسي:\n- نص ساي\n- أو صورة + نص في التعليق", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("إلغاء", callback_data="admin_back")]]))
         return
     if data == "admin_block_start" and user_id == ADMIN_ID:
         user_state[user_id] = {"waiting_block_id": True}
@@ -362,7 +396,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if data == "admin_back" and user_id == ADMIN_ID:
         user_state[user_id] = {}
-        # رجوع للوحة الأدمن
         users = get_all_users()
         total = sum(u[3] for u in users)
         txt = f"📊 لوحة الأدمن - TOP 1\n\nعدد المستخدمين: {len(users)}\nإجمالي الأرصدة: {total:,} SDG\n\nاختار:"
@@ -402,12 +435,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         await q.edit_message_text(f"💰 محفظتي\n\nرصيدك: {bal:,} SDG\n\nدوس تغذية عشان تشحن.", reply_markup=InlineKeyboardMarkup(kb))
         return
-
     if data == "topup_start":
         user_state[user_id] = {"waiting_topup_amount": True}
         await q.edit_message_text("💳 تغذية محفظتي\n\nاكتب المبلغ الداير تشحن بيهو المحفظة\nمثال: 10000\n\nاكتبو في رسالة هسي:", reply_markup=back_to_main())
         return
-
     if data.startswith("topup_"):
         parts = data.rsplit("_", 2)
         sub = data.split("_")[1]
@@ -435,7 +466,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except:
             pass
         return
-
     if data.startswith("cat_"):
         cat = data[4:]
         kb = []
@@ -449,7 +479,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         idx = int(rest.rsplit("_", 1)[-1])
         cat = rest.rsplit("_", 1)[0]
         item = PACKAGES[cat][idx]
-        user_state[user_id] = {"name": item[1], "price": item[2], "method": item[3], "price_num": item[4]}
+        user_state[user_id] = {"name": item[1], "price": item[2], "method": item[3], "price_num": item[4], "cat": cat}
         kb = [[InlineKeyboardButton("اطلب الان", callback_data="order_now")],[InlineKeyboardButton("رجوع", callback_data="cat_" + cat)]]
         await q.edit_message_text(item[1] + "\nالسعر: " + item[2] + "\nالتسليم: في غضون دقائق", reply_markup=InlineKeyboardMarkup(kb))
         return
@@ -459,13 +489,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await q.edit_message_text("اختار باقة أولاً", reply_markup=main_menu(user_id))
             return
         method = order["method"]
+        cat = order.get("cat", "")
         txt = "طلبك: " + order["name"] + "\nالسعر: " + order["price"] + "\n\nحول على بنكك:\nبنكك: " + BANKK_NUMBER + "\nالاسم: " + BANKK_NAME + "\n\n"
-        if method == "id":
+        if cat == "airdrop":
+            txt += "بعد التحويل رسل لينا:\n1- صورة اشعار التحويل\n2- بعدها رسل البريد الالكتروني وكلمة السر مع بعض في رسالة واحدة\n\nمثال:\nbasomaa891@gmail.com\nكلمة السر: 123456"
+        elif method == "id":
             txt += "بعد التحويل رسل لينا في رسالة واحدة:\n1- صورة اشعار التحويل\n2- الـ ID حقك\nمثال: ID: 123456789"
         else:
-            txt += "بعد التحويل رسل لينا في رسالة واحدة:\n1- صورة اشعار التحويل\n2- ايميل حسابك\n3- كلمة السر\n4- ال ID لو موجود\nمثال:\nالايميل: xxx@gmail.com\nكلمة السر: xxx\nال ID: xxx"
-        txt += "\n\nرسل المعلومات هسي و حنجهز ليك الطلب."
+            txt += "بعد التحويل رسل لينا:\n1- صورة اشعار التحويل\n2- بعدها رسل البريد الالكتروني وكلمة السر مع بعض في رسالة واحدة\n\nمثال:\nxxx@gmail.com\nكلمة السر: xxx"
+        txt += "\n\nرسل صورة الاشعار هسي."
         user_state[user_id]["waiting"] = True
+        user_state[user_id]["stage"] = "waiting_photo"
         await q.edit_message_text(txt, reply_markup=back_to_main())
         return
 
@@ -475,27 +509,78 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ensure_user(user)
     state = user_state.get(user_id, {})
 
-    # --- الأدمن: رسالة جماعية ---
-    if user_id == ADMIN_ID and state.get("waiting_broadcast") and update.message.text:
-        text = update.message.text
-        users = get_all_users()
-        await update.message.reply_text(f"📢 جاري الارسال لـ {len(users)} مستخدم...")
-        sent = 0
-        failed = 0
-        for u in users:
-            uid = u[0]
-            if uid == ADMIN_ID or is_blocked(uid):
-                continue
-            try:
-                await context.bot.send_message(uid, f"📢 رسالة من TOP 1 👑\n\n{text}")
-                sent += 1
-            except:
-                failed += 1
-        user_state[user_id] = {}
-        await update.message.reply_text(f"✅ تم الانتهاء\nتم الارسال: {sent}\nفشل: {failed}")
+    if user_id == ADMIN_ID and update.message.photo and update.message.caption and update.message.caption.strip().startswith("/msg"):
+        await msg_cmd(update, context)
+        return
+    if user_id == ADMIN_ID and update.message.caption and update.message.caption.strip().startswith("/broadcast"):
+        await broadcast_cmd(update, context)
         return
 
-    # --- الأدمن: حظر ---
+    if user_id == ADMIN_ID and state.get("waiting_msg_id") and update.message.text:
+        nums = re.findall(r'\d+', update.message.text)
+        if not nums:
+            await update.message.reply_text("اكتب ID بالأرقام بس")
+            return
+        target = int(nums[0])
+        user_state[user_id] = {"waiting_msg_content": True, "msg_target": target}
+        await update.message.reply_text(f"تمام، حترسل لـ {target}\n\nهسي ارسل الرسالة:\n- نص ساي\n- أو صورة + نص في تعليقها")
+        return
+
+    if user_id == ADMIN_ID and state.get("waiting_msg_content"):
+        target = state.get("msg_target")
+        if update.message.photo:
+            caption = update.message.caption or ""
+            try:
+                await context.bot.send_photo(target, photo=update.message.photo[-1].file_id, caption=caption if caption else "📩 رسالة من TOP 1")
+                user_state[user_id] = {}
+                await update.message.reply_text(f"✅ تم ارسال الصورة + النص لـ {target}")
+            except:
+                user_state[user_id] = {}
+                await update.message.reply_text("ما قدرت ارسل، الزول ده ما بدأ البوت.")
+            return
+        if update.message.text:
+            try:
+                await context.bot.send_message(target, update.message.text)
+                user_state[user_id] = {}
+                await update.message.reply_text(f"✅ تم ارسال الرسالة لـ {target}")
+            except:
+                user_state[user_id] = {}
+                await update.message.reply_text("ما قدرت ارسل، الزول ده ما بدأ البوت.")
+            return
+
+    if user_id == ADMIN_ID and state.get("waiting_broadcast"):
+        users = get_all_users()
+        if update.message.photo:
+            caption = update.message.caption or ""
+            sent = failed = 0
+            for u in users:
+                uid = u[0]
+                if uid == ADMIN_ID or is_blocked(uid):
+                    continue
+                try:
+                    await context.bot.send_photo(uid, photo=update.message.photo[-1].file_id, caption=f"📢 رسالة من TOP 1 👑\n\n{caption}" if caption else "📢 رسالة من TOP 1 👑")
+                    sent += 1
+                except:
+                    failed += 1
+            user_state[user_id] = {}
+            await update.message.reply_text(f"✅ تم\nتم: {sent} | فشل: {failed}")
+            return
+        if update.message.text:
+            text = update.message.text
+            sent = failed = 0
+            for u in users:
+                uid = u[0]
+                if uid == ADMIN_ID or is_blocked(uid):
+                    continue
+                try:
+                    await context.bot.send_message(uid, f"📢 رسالة من TOP 1 👑\n\n{text}")
+                    sent += 1
+                except:
+                    failed += 1
+            user_state[user_id] = {}
+            await update.message.reply_text(f"✅ تم\nتم: {sent} | فشل: {failed}")
+            return
+
     if user_id == ADMIN_ID and state.get("waiting_block_id") and update.message.text:
         nums = re.findall(r'\d+', update.message.text)
         if not nums:
@@ -511,7 +596,6 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
         return
 
-    # --- الأدمن: فك حظر ---
     if user_id == ADMIN_ID and state.get("waiting_unblock_id") and update.message.text:
         nums = re.findall(r'\d+', update.message.text)
         if not nums:
@@ -531,7 +615,6 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🚫 تم حظرك من استخدام البوت.")
         return
 
-    # الزبون كتب مبلغ التغذية
     if state.get("waiting_topup_amount") and update.message.text:
         txt = update.message.text.replace(",", "").strip()
         nums = re.findall(r'\d+', txt)
@@ -543,7 +626,6 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"تمام 👌\nداير تشحن {amount:,} SDG\n\nحول على بنكك:\nبنكك: {BANKK_NUMBER}\nالاسم: {BANKK_NAME}\n\nبعد التحويل رسل صورة الاشعار هسي:")
         return
 
-    # الزبون رسل اشعار التغذية
     if state.get("waiting_topup_receipt"):
         amount = state.get("topup_amount", 0)
         header = f"💳 طلب شحن محفظة\nالزبون: {user.first_name}\n@{user.username or ''} - ID: {user_id}\nالمبلغ: {amount:,} SDG\nرصيدو الحالي: {get_balance(user_id):,} SDG\n"
@@ -562,24 +644,41 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not order or not order.get("waiting"):
         await update.message.reply_text("اهلا بيك اختار من القائمة /start")
         return
-    header = "طلب جديد!\nالزبون: " + user.first_name + "\nيوزر التليجرام: " + str(user_id) + "\nالباقة: " + order["name"] + "\nالسعر: " + order["price"] + "\n"
-    header += "الطريقة: عبر ID\n" if order["method"] == "id" else "الطريقة: عبر الحساب\n"
-    header += f"رصيد محفظتو: {get_balance(user_id):,} SDG\n"
-    header += "بيانات الزبون:\n"
+
+    cat = order.get("cat", "")
+    method = order.get("method", "id")
+    stage = order.get("stage", "waiting_photo")
     price_num = order.get("price_num", parse_price(order["price"]))
-    try:
+
+    if stage == "waiting_photo":
         if update.message.photo:
             caption = update.message.caption or ""
+            header = "طلب جديد!\nالزبون: " + user.first_name + "\nيوزر التليجرام: " + str(user_id) + "\nالباقة: " + order["name"] + "\nالسعر: " + order["price"] + "\n"
+            header += "الطريقة: عبر ID\n" if method == "id" and cat != "airdrop" else "الطريقة: عبر الحساب / انزال\n"
+            header += f"رصيد محفظتو: {get_balance(user_id):,} SDG\n"
+            header += "بيانات الزبون:\n"
             await context.bot.send_photo(chat_id=ADMIN_ID, photo=update.message.photo[-1].file_id, caption=header + "صورة اشعار + نص: " + caption, reply_markup=admin_keyboard(user_id, price_num))
-            await update.message.reply_text("وصلت صورة الاشعار ✅\nهسي رسل الـ ID حقك في رسالة براهو")
+            user_state[user_id]["stage"] = "waiting_details"
+            if cat == "airdrop":
+                await update.message.reply_text("وصلت صورة الاشعار ✅\n\nهسي رسل البريد الالكتروني وكلمة السر مع بعض في رسالة واحدة 👇\n\nمثال:\nbasomaa891@gmail.com\nكلمة السر: 123456")
+            elif method == "id":
+                await update.message.reply_text("وصلت صورة الاشعار ✅\nهسي رسل الـ ID حقك في رسالة براهو")
+            else:
+                await update.message.reply_text("وصلت صورة الاشعار ✅\n\nهسي رسل البريد الالكتروني وكلمة السر مع بعض في رسالة واحدة 👇\n\nمثال:\nxxx@gmail.com\nكلمة السر: xxx")
             return
         else:
-            await context.bot.send_message(chat_id=ADMIN_ID, text=header + update.message.text, reply_markup=admin_keyboard(user_id, price_num))
-            await update.message.reply_text("تم استلام طلبك! حنراجع التحويل ونشحن ليك.")
-            user_state[user_id]["waiting"] = False
-    except Exception as e:
-        print(e)
-        await update.message.reply_text("حصل خطأ، حاول تاني")
+            await update.message.reply_text("رسل صورة الاشعار أولاً 📸")
+            return
+
+    if stage == "waiting_details":
+        if update.message.photo:
+            await update.message.reply_text("خلاص وصلت الصورة، هسي رسل البيانات في رسالة نصية")
+            return
+        header2 = f"📩 بيانات الزبون - {order['name']}\nالزبون: {user.first_name} - ID: {user_id}\n"
+        await context.bot.send_message(chat_id=ADMIN_ID, text=header2 + update.message.text, reply_markup=admin_keyboard(user_id, price_num))
+        await update.message.reply_text("تم استلام طلبك! حنراجع التحويل ونشحن ليك ✅")
+        user_state[user_id] = {}
+        return
 
 async def admin_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -593,7 +692,6 @@ async def admin_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         action, user_id = q.data.rsplit("_", 1)
         user_id = int(user_id)
         price_num = 0
-
     if action == "done":
         msg = "تم ✅ تم شحن طلبك بنجاح، شكراً ليك ❤️"
         suffix = "\n\n✅ تم التنفيذ"
