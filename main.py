@@ -7,7 +7,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 
 TOKEN = os.environ.get("BOT_TOKEN")
 BANKK_NUMBER = "8994176"
-BANKK_NAME = "ميسر معتز"
+BANKK_NAME = "ميسر"
 ADMIN_ID = 7269956912
 DB = "wallet.db"
 
@@ -161,7 +161,7 @@ async def admin_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     txt = f"📊 لوحة الأدمن - TOP 1\n\nعدد المستخدمين: {len(users)}\nإجمالي الأرصدة: {total:,} SDG\n\nآخر 10:\n"
     for u in users[:10]:
         txt += f"- {u[2]} (@{u[1]}) - {u[3]:,} SDG - ID: {u[0]}\n"
-    txt += "\nأوامر:\n/balances - كل الأرصدة\n/add [ID] [المبلغ] - إضافة رصيد\n/deduct [ID] [المبلغ] - خصم رصيد"
+    txt += "\nأوامر:\n/balances - كل الأرصدة\n/add [ID] [المبلغ] - إضافة رصيد\n/deduct [ID] [المبلغ] - خصم رصيد\n/msg [ID] [الرسالة] - مراسلة زول بالـ ID"
     await update.message.reply_text(txt)
 
 async def balances_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -204,6 +204,20 @@ async def deduct_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"✅ تم خصم {amount:,} SDG من {target}\nرصيدو الجديد: {new_bal:,} SDG")
     except:
         await update.message.reply_text("الاستخدام: /deduct [ID] [المبلغ]")
+
+async def msg_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return
+    try:
+        target = int(context.args[0])
+        text = " ".join(context.args[1:])
+        if not text:
+            await update.message.reply_text("اكتب الرسالة: /msg [ID] [الرسالة]")
+            return
+        await context.bot.send_message(target, text)
+        await update.message.reply_text(f"✅ تم ارسال الرسالة لـ {target}")
+    except Exception as e:
+        await update.message.reply_text(f"ما قدرت ارسل، اتأكد انو الزول بدأ البوت قبل كدا.\nالاستخدام: /msg [ID] [الرسالة]\nمثال: /msg 8673670577 اهلا بيك تم شحن محفظتك")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -405,6 +419,7 @@ def main():
     app.add_handler(CommandHandler("balances", balances_cmd))
     app.add_handler(CommandHandler("add", add_cmd))
     app.add_handler(CommandHandler("deduct", deduct_cmd))
+    app.add_handler(CommandHandler("msg", msg_cmd))
     app.add_handler(CallbackQueryHandler(admin_button, pattern="^(done|fail|dup|wrong|unavail)_"))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO, receive_message))
