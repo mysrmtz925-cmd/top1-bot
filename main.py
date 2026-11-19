@@ -7,7 +7,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 
 TOKEN = os.environ.get("BOT_TOKEN")
 BANKK_NUMBER = "8994176"
-BANKK_NAME = "ميسر"
+BANKK_NAME = "ميسر معتز"
 ADMIN_ID = 7269956912
 DB = "wallet.db"
 
