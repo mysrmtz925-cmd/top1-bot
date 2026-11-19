@@ -3,7 +3,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 
-TOKEN = os.environ.get("BOT_TOKEN") or "0x9880b5513f2ef6a8b89ce6b0eb09f3e2ea14b5b2"
+TOKEN = os.environ.get("0x9880b5513f2ef6a8b89ce6b0eb09f3e2ea14b5b2") or "0x9880b5513f2ef6a8b89ce6b0eb09f3e2ea14b5b2"
 BANKK_NUMBER = "8994176"
 BANKK_NAME = "ميسر معتز"
 ADMIN_ID = 7269956912
