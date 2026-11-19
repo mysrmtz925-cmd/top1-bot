@@ -7,7 +7,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 
 TOKEN = os.environ.get("BOT_TOKEN")
 BANKK_NUMBER = "8994176"
-BANKK_NAME = "ميسر"
+BANKK_NAME = "ميسر معتز"
 ADMIN_ID = 7269956912
 DB = "wallet.db"
 
@@ -96,18 +96,15 @@ def get_all_users():
     return rows
 
 def parse_price(price_text):
-    # "12,000 جنيه" -> 12000
     nums = re.findall(r'\d+', price_text.replace(",", ""))
-    if nums:
-        # join if needed, first number is price
-        return int(nums[0])
-    return 0
+    return int(nums[0]) if nums else 0
 
 # ---------- Menus ----------
 def main_menu(user_id=None):
     bal = get_balance(user_id) if user_id else 0
     kb = [
         [InlineKeyboardButton(f"💰 محفظتي : {bal:,} SDG", callback_data="my_wallet")],
+        [InlineKeyboardButton("💳 تغذية محفظتي", callback_data="topup_start")],
         [InlineKeyboardButton("شحن جواهر وعملات - ID", callback_data="cat_id_gems")],
         [InlineKeyboardButton("Level Up Pass - ID", callback_data="cat_id_level")],
         [InlineKeyboardButton("شحن عبر الحساب - جواهر", callback_data="cat_acc_gems")],
@@ -125,7 +122,17 @@ def admin_keyboard(user_id, price_num=0):
         [InlineKeyboardButton("✅ تم الطلب", callback_data=f"done_{user_id}_{price_num}")],
         [InlineKeyboardButton("❌ فشل الطلب وتم إرجاع المبلغ", callback_data=f"fail_{user_id}_{price_num}")],
         [InlineKeyboardButton("⚠️ إشعار مكرر", callback_data=f"dup_{user_id}_{price_num}")],
+        [InlineKeyboardButton("🚫 إشعار غير صحيح", callback_data=f"wrong_{user_id}_{price_num}")],
         [InlineKeyboardButton("🚫 غير متوفر", callback_data=f"unavail_{user_id}_{price_num}")],
+    ]
+    return InlineKeyboardMarkup(kb)
+
+def topup_admin_keyboard(user_id, amount):
+    kb = [
+        [InlineKeyboardButton("✅ قبول وشحن المحفظة", callback_data=f"topup_yes_{user_id}_{amount}")],
+        [InlineKeyboardButton("❌ رفض", callback_data=f"topup_no_{user_id}_{amount}")],
+        [InlineKeyboardButton("⚠️ إشعار مكرر", callback_data=f"topup_dup_{user_id}_{amount}")],
+        [InlineKeyboardButton("🚫 إشعار غير صحيح", callback_data=f"topup_wrong_{user_id}_{amount}")],
     ]
     return InlineKeyboardMarkup(kb)
 
@@ -144,7 +151,7 @@ async def wallet_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     ensure_user(user)
     bal = get_balance(user.id)
-    await update.message.reply_text(f"💰 محفظتي\n\nرصيدك الحالي: {bal:,} SDG\n\nلشحن المحفظة حول على بنكك:\nبنكك: {BANKK_NUMBER}\nالاسم: {BANKK_NAME}\n\nبعد التحويل رسل الاشعار هنا واكتب: شحن محفظة", reply_markup=back_to_main())
+    await update.message.reply_text(f"💰 محفظتي\n\nرصيدك الحالي: {bal:,} SDG\n\nلشحن المحفظة دوس زر تغذية محفظتي من القائمة", reply_markup=back_to_main())
 
 async def admin_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -168,7 +175,6 @@ async def balances_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for i, u in enumerate(users, 1):
         txt += f"{i}. {u[2]} (@{u[1]}) - {u[3]:,} SDG - {u[0]}\n"
     txt += f"\nإجمالي: {sum(u[3] for u in users):,} SDG"
-    # Telegram limit, split if long
     for j in range(0, len(txt), 4000):
         await update.message.reply_text(txt[j:j+4000])
 
@@ -210,8 +216,48 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if data == "my_wallet":
         bal = get_balance(user_id)
-        await q.edit_message_text(f"💰 محفظتي\n\nرصيدك: {bal:,} SDG\n\nلشحن المحفظة حول على بنكك {BANKK_NUMBER} باسم {BANKK_NAME} ورسل الاشعار.", reply_markup=back_to_main())
+        kb = [
+            [InlineKeyboardButton("💳 تغذية محفظتي", callback_data="topup_start")],
+            [InlineKeyboardButton("الرئيسية", callback_data="main")]
+        ]
+        await q.edit_message_text(f"💰 محفظتي\n\nرصيدك: {bal:,} SDG\n\nدوس تغذية عشان تشحن.", reply_markup=InlineKeyboardMarkup(kb))
         return
+
+    # تغذية المحفظة - طلب المبلغ
+    if data == "topup_start":
+        user_state[user_id] = {"waiting_topup_amount": True}
+        await q.edit_message_text("💳 تغذية محفظتي\n\nاكتب المبلغ الداير تشحن بيهو المحفظة\nمثال: 10000\n\nاكتبو في رسالة هسي:", reply_markup=back_to_main())
+        return
+
+    # أزرار الأدمن لتغذية المحفظة
+    if data.startswith("topup_"):
+        parts = data.rsplit("_", 2)
+        sub = data.split("_")[1]
+        target = int(parts[1]); amount = int(parts[2])
+        if sub == "yes":
+            new_bal = change_balance(target, amount)
+            await context.bot.send_message(target, f"✅ تم قبول شحن محفظتك!\nتم إضافة {amount:,} SDG\nرصيدك الحالي: {new_bal:,} SDG")
+            suffix = f"\n\n✅ تم الشحن - {amount:,} SDG"
+        elif sub == "no":
+            await context.bot.send_message(target, f"❌ تم رفض طلب شحن المحفظة {amount:,} SDG. راسلنا للتأكد.")
+            suffix = "\n\n❌ تم الرفض"
+        elif sub == "dup":
+            await context.bot.send_message(target, "⚠️ الإشعار ده مكرر، انت رسلت الاشعار ده قبل كدا. لو عندك اشعار جديد رسلو.")
+            suffix = "\n\n⚠️ إشعار مكرر"
+        elif sub == "wrong":
+            await context.bot.send_message(target, "🚫 الإشعار ده غير صحيح، اتأكد من صورة الاشعار ورسل اشعار صحيح، أو راسلنا.")
+            suffix = "\n\n🚫 إشعار غير صحيح"
+        else:
+            return
+        try:
+            if q.message.photo:
+                await q.edit_message_caption((q.message.caption or "") + suffix)
+            else:
+                await q.edit_message_text((q.message.text or "") + suffix)
+        except:
+            pass
+        return
+
     if data.startswith("cat_"):
         cat = data[4:]
         kb = []
@@ -249,7 +295,36 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     user_id = user.id
     ensure_user(user)
-    order = user_state.get(user_id)
+    state = user_state.get(user_id, {})
+
+    # الزبون كتب مبلغ التغذية
+    if state.get("waiting_topup_amount") and update.message.text:
+        txt = update.message.text.replace(",", "").strip()
+        nums = re.findall(r'\d+', txt)
+        if not nums:
+            await update.message.reply_text("اكتب المبلغ بالأرقام بس، مثال: 10000")
+            return
+        amount = int(nums[0])
+        user_state[user_id] = {"waiting_topup_receipt": True, "topup_amount": amount}
+        await update.message.reply_text(f"تمام 👌\nداير تشحن {amount:,} SDG\n\nحول على بنكك:\nبنكك: {BANKK_NUMBER}\nالاسم: {BANKK_NAME}\n\nبعد التحويل رسل صورة الاشعار هسي:")
+        return
+
+    # الزبون رسل اشعار التغذية
+    if state.get("waiting_topup_receipt"):
+        amount = state.get("topup_amount", 0)
+        header = f"💳 طلب شحن محفظة\nالزبون: {user.first_name}\n@{user.username or ''} - ID: {user_id}\nالمبلغ: {amount:,} SDG\nرصيدو الحالي: {get_balance(user_id):,} SDG\n"
+        if update.message.photo:
+            await context.bot.send_photo(chat_id=ADMIN_ID, photo=update.message.photo[-1].file_id, caption=header + "صورة اشعار الشحن", reply_markup=topup_admin_keyboard(user_id, amount))
+            await update.message.reply_text("تم استلام اشعار شحن المحفظة ✅\nحنراجعو ونشحن ليك.")
+            user_state[user_id] = {}
+            return
+        else:
+            await context.bot.send_message(chat_id=ADMIN_ID, text=header + "نص: " + update.message.text, reply_markup=topup_admin_keyboard(user_id, amount))
+            await update.message.reply_text("تم استلام طلب شحن المحفظة ✅")
+            user_state[user_id] = {}
+            return
+
+    order = state
     if not order or not order.get("waiting"):
         await update.message.reply_text("اهلا بيك اختار من القائمة /start")
         return
@@ -275,7 +350,6 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    # done_123_12000
     parts = q.data.rsplit("_", 2)
     if len(parts) == 3:
         action = parts[0]
@@ -290,7 +364,6 @@ async def admin_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = "تم ✅ تم شحن طلبك بنجاح، شكراً ليك ❤️"
         suffix = "\n\n✅ تم التنفيذ"
     elif action == "fail":
-        # إرجاع للمحفظة
         if price_num > 0:
             new_bal = change_balance(user_id, price_num)
             msg = f"عذراً ❌ فشل طلبك، وتم إرجاع المبلغ {price_num:,} SDG لمحفظتك.\nرصيدك الحالي: {new_bal:,} SDG"
@@ -301,6 +374,9 @@ async def admin_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif action == "dup":
         msg = "تنبيه ⚠️ الإشعار ده مكرر، تم تجاهل الطلب المكرر."
         suffix = "\n\n⚠️ إشعار مكرر"
+    elif action == "wrong":
+        msg = "🚫 الإشعار ده غير صحيح، اتأكد من صورة الاشعار ورسل اشعار صحيح."
+        suffix = "\n\n🚫 إشعار غير صحيح"
     elif action == "unavail":
         if price_num > 0:
             new_bal = change_balance(user_id, price_num)
@@ -329,7 +405,7 @@ def main():
     app.add_handler(CommandHandler("balances", balances_cmd))
     app.add_handler(CommandHandler("add", add_cmd))
     app.add_handler(CommandHandler("deduct", deduct_cmd))
-    app.add_handler(CallbackQueryHandler(admin_button, pattern="^(done|fail|dup|unavail)_"))
+    app.add_handler(CallbackQueryHandler(admin_button, pattern="^(done|fail|dup|wrong|unavail)_"))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT | filters.PHOTO, receive_message))
     print("Bot is running...")
