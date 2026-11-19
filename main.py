@@ -2,8 +2,8 @@ import os, sqlite3, re
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
-# حتخت التوكن هنا - التوكن الرسلتو لي اخر واحد
-TOKEN = os.environ.get("BOT_TOKEN") or "خت_التوكن_هنا"
+
+TOKEN = os.environ.get("BOT_TOKEN") or "0x9880b5513f2ef6a8b89ce6b0eb09f3e2ea14b5b2"
 BANKK_NUMBER = "8994176"
 BANKK_NAME = "ميسر معتز"
 ADMIN_ID = 7269956912
