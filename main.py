@@ -37,14 +37,6 @@ PACKAGES = {
         ("200💎 عبر الحساب - 22,000", "200 جوهرة عبر الحساب", "22,000 جنيه", "acc", 22000),
         ("500💎 عبر الحساب - 55,000", "500 جوهرة عبر الحساب", "55,000 جنيه", "acc", 55000),
     ],
-    "acc_level": [
-        ("6,500 - Level Up عبر الحساب - 6 مستوى", "Level Up عبر الحساب - 6 مستوى", "6,500 جنيه", "acc", 6500),
-        ("7,500 - Level Up عبر الحساب - 10 مستوى", "Level Up عبر الحساب - 10 مستوى", "7,500 جنيه", "acc", 7500),
-        ("7,500 - Level Up عبر الحساب - 15 مستوى", "Level Up عبر الحساب - 15 مستوى", "7,500 جنيه", "acc", 7500),
-        ("7,500 - Level Up عبر الحساب - 20 مستوى", "Level Up عبر الحساب - 20 مستوى", "7,500 جنيه", "acc", 7500),
-        ("7,500 - Level Up عبر الحساب - 25 مستوى", "Level Up عبر الحساب - 25 مستوى", "7,500 جنيه", "acc", 7500),
-        ("10,500 - Level Up عبر الحساب - 30 مستوى", "Level Up عبر الحساب - 30 مستوى", "10,500 جنيه", "acc", 10500),
-    ],
     "airdrop": [
         ("انزال $1 - 12,000", "انزال جوي $1", "12,000 جنيه", "acc", 12000),
         ("انزال $2 - 25,000", "انزال جوي $2", "25,000 جنيه", "acc", 25000),
@@ -55,7 +47,6 @@ CATEGORY_NAMES = {
     "id_gems": "شحن جواهر وعملات - ID",
     "id_level": "Level Up Pass - ID",
     "acc_gems": "شحن جواهر عبر الحساب",
-    "acc_level": "Level Up Pass - عبر الحساب",
     "airdrop": "انزالات جوية - Airdrop",
 }
 
@@ -141,7 +132,6 @@ def main_menu(user_id=None):
         [InlineKeyboardButton("شحن جواهر وعملات - ID", callback_data="cat_id_gems")],
         [InlineKeyboardButton("Level Up Pass - ID", callback_data="cat_id_level")],
         [InlineKeyboardButton("شحن عبر الحساب - جواهر", callback_data="cat_acc_gems")],
-        [InlineKeyboardButton("Level Up - عبر الحساب", callback_data="cat_acc_level")],
         [InlineKeyboardButton("انزالات جوية - Airdrop", callback_data="cat_airdrop")],
         [InlineKeyboardButton("📞 التواصل والدعم", url="https://t.me/TOP1MOYASAR")],
     ]
