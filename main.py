@@ -7,7 +7,9 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 
 TOKEN = os.environ.get("BOT_TOKEN")
 BANKK_NUMBER = "8994176"
-BANKK_NAME = "ميسر"
+BANKK_NAME = "ميسر معتز صالح"
+MYCASHI_NUMBER = "400110751"
+MYCASHI_NAME = "ميسر معتز صالح"
 ADMIN_ID = 7269956912
 DB = "wallet.db"
 
@@ -51,6 +53,19 @@ CATEGORY_NAMES = {
 }
 
 user_state = {}
+
+def payment_text(method):
+    if method == "mycashi":
+        return f"ماي كاشي:\nالرقم: {MYCASHI_NUMBER}\nالاسم: {MYCASHI_NAME}"
+    return f"بنكك:\nبنكك: {BANKK_NUMBER}\nالاسم: {BANKK_NAME}"
+
+def payment_keyboard(prefix="pay"):
+    kb = [
+        [InlineKeyboardButton("🏦 بنكك", callback_data=f"{prefix}_bankak")],
+        [InlineKeyboardButton("📱 ماي كاشي", callback_data=f"{prefix}_mycashi")],
+        [InlineKeyboardButton("رجوع", callback_data="main")],
+    ]
+    return InlineKeyboardMarkup(kb)
 
 # ---------- Wallet DB ----------
 def init_db():
@@ -435,6 +450,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_state[user_id] = {"waiting_topup_amount": True}
         await q.edit_message_text("💳 تغذية محفظتي\n\nاكتب المبلغ الداير تشحن بيهو المحفظة\nمثال: 10000\n\nاكتبو في رسالة هسي:", reply_markup=back_to_main())
         return
+
+    # اختيار طريقة الدفع لتغذية المحفظة
+    if data.startswith("topup_pay_"):
+        method = data.replace("topup_pay_", "")
+        amount = user_state.get(user_id, {}).get("topup_amount", 0)
+        user_state[user_id] = {"waiting_topup_receipt": True, "topup_amount": amount, "pay_method": method}
+        await q.edit_message_text(f"تمام 👌\nداير تشحن {amount:,} SDG\n\nحول على:\n{payment_text(method)}\n\nبعد التحويل رسل صورة الاشعار هسي:", reply_markup=back_to_main())
+        return
+
     if data.startswith("topup_"):
         parts = data.rsplit("_", 2)
         sub = data.split("_")[1]
@@ -484,18 +508,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not order:
             await q.edit_message_text("اختار باقة أولاً", reply_markup=main_menu(user_id))
             return
-        method = order["method"]
+        await q.edit_message_text(f"طلبك: {order['name']}\nالسعر: {order['price']}\n\nاختار طريقة الدفع:", reply_markup=payment_keyboard("pay"))
+        return
+
+    # اختيار طريقة الدفع للطلب
+    if data.startswith("pay_"):
+        method = data.replace("pay_", "")
+        order = user_state.get(user_id)
+        if not order:
+            await q.edit_message_text("اختار باقة أولاً", reply_markup=main_menu(user_id))
+            return
+        order_method = order["method"]
         cat = order.get("cat", "")
-        txt = "طلبك: " + order["name"] + "\nالسعر: " + order["price"] + "\n\nحول على بنكك:\nبنكك: " + BANKK_NUMBER + "\nالاسم: " + BANKK_NAME + "\n\n"
+        txt = "طلبك: " + order["name"] + "\nالسعر: " + order["price"] + f"\nطريقة الدفع: {'ماي كاشي' if method=='mycashi' else 'بنكك'}\n\nحول على:\n{payment_text(method)}\n\n"
         if cat == "airdrop":
             txt += "بعد التحويل رسل لينا:\n1- صورة اشعار التحويل\n2- بعدها رسل البريد الالكتروني وكلمة السر مع بعض في رسالة واحدة\n\nمثال:\nbasomaa891@gmail.com\nكلمة السر: 123456"
-        elif method == "id":
+        elif order_method == "id":
             txt += "بعد التحويل رسل لينا في رسالة واحدة:\n1- صورة اشعار التحويل\n2- الـ ID حقك\nمثال: ID: 123456789"
         else:
             txt += "بعد التحويل رسل لينا:\n1- صورة اشعار التحويل\n2- بعدها رسل البريد الالكتروني وكلمة السر مع بعض في رسالة واحدة\n\nمثال:\nxxx@gmail.com\nكلمة السر: xxx"
         txt += "\n\nرسل صورة الاشعار هسي."
         user_state[user_id]["waiting"] = True
         user_state[user_id]["stage"] = "waiting_photo"
+        user_state[user_id]["pay_method"] = method
         await q.edit_message_text(txt, reply_markup=back_to_main())
         return
 
@@ -618,13 +653,14 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("اكتب المبلغ بالأرقام بس، مثال: 10000")
             return
         amount = int(nums[0])
-        user_state[user_id] = {"waiting_topup_receipt": True, "topup_amount": amount}
-        await update.message.reply_text(f"تمام 👌\nداير تشحن {amount:,} SDG\n\nحول على بنكك:\nبنكك: {BANKK_NUMBER}\nالاسم: {BANKK_NAME}\n\nبعد التحويل رسل صورة الاشعار هسي:")
+        user_state[user_id] = {"waiting_topup_pay_choice": True, "topup_amount": amount}
+        await update.message.reply_text(f"تمام 👌\nداير تشحن {amount:,} SDG\n\nاختار طريقة الدفع:", reply_markup=payment_keyboard("topup_pay"))
         return
 
     if state.get("waiting_topup_receipt"):
         amount = state.get("topup_amount", 0)
-        header = f"💳 طلب شحن محفظة\nالزبون: {user.first_name}\n@{user.username or ''} - ID: {user_id}\nالمبلغ: {amount:,} SDG\nرصيدو الحالي: {get_balance(user_id):,} SDG\n"
+        pay_method = state.get("pay_method", "bankak")
+        header = f"💳 طلب شحن محفظة\nالزبون: {user.first_name}\n@{user.username or ''} - ID: {user_id}\nالمبلغ: {amount:,} SDG\nطريقة الدفع: {'ماي كاشي' if pay_method=='mycashi' else 'بنكك'}\nرصيدو الحالي: {get_balance(user_id):,} SDG\n"
         if update.message.photo:
             await context.bot.send_photo(chat_id=ADMIN_ID, photo=update.message.photo[-1].file_id, caption=header + "صورة اشعار الشحن", reply_markup=topup_admin_keyboard(user_id, amount))
             await update.message.reply_text("تم استلام اشعار شحن المحفظة ✅\nحنراجعو ونشحن ليك.")
@@ -645,12 +681,14 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     method = order.get("method", "id")
     stage = order.get("stage", "waiting_photo")
     price_num = order.get("price_num", parse_price(order["price"]))
+    pay_method = order.get("pay_method", "bankak")
 
     if stage == "waiting_photo":
         if update.message.photo:
             caption = update.message.caption or ""
             header = "طلب جديد!\nالزبون: " + user.first_name + "\nيوزر التليجرام: " + str(user_id) + "\nالباقة: " + order["name"] + "\nالسعر: " + order["price"] + "\n"
             header += "الطريقة: عبر ID\n" if method == "id" and cat != "airdrop" else "الطريقة: عبر الحساب / انزال\n"
+            header += f"طريقة الدفع: {'ماي كاشي' if pay_method=='mycashi' else 'بنكك'}\n"
             header += f"رصيد محفظتو: {get_balance(user_id):,} SDG\n"
             header += "بيانات الزبون:\n"
             await context.bot.send_photo(chat_id=ADMIN_ID, photo=update.message.photo[-1].file_id, caption=header + "صورة اشعار + نص: " + caption, reply_markup=admin_keyboard(user_id, price_num))
