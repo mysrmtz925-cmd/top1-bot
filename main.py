@@ -30,7 +30,7 @@ PACKAGES = {
         ("9,000 - Level Up - 25 مستوى", "Level Up - 25 مستوى", "9,000 جنيه", "id", 9000),
         ("13,500 - Level Up - 30 مستوى", "Level Up - 30 مستوى", "13,500 جنيه", "id", 13500),
     ],
-        "acc_gems": [
+    "acc_gems": [
         ("100💎 عبر الحساب - 11,500", "100 جوهرة عبر الحساب", "11,500 جنيه", "acc", 11500),
         ("200💎 عبر الحساب - 23,000", "200 جوهرة عبر الحساب", "23,000 جنيه", "acc", 23000),
         ("500💎 عبر الحساب - 57,500", "500 جوهرة عبر الحساب", "57,500 جنيه", "acc", 57500),
@@ -140,11 +140,8 @@ def main_menu(user_id=None):
     bal = get_balance(user_id) if user_id else 0
     kb = [
         [InlineKeyboardButton(f"💰 محفظتي : {bal:,} SDG", callback_data="my_wallet")],
-        [InlineKeyboardButton("💳 تغذية محفظتي", callback_data="topup_start")],
-        [InlineKeyboardButton("شحن جواهر وعملات - ID", callback_data="cat_id_gems")],
-        [InlineKeyboardButton("Level Up Pass - ID", callback_data="cat_id_level")],
-        [InlineKeyboardButton("شحن عبر الحساب - جواهر", callback_data="cat_acc_gems")],
-        [InlineKeyboardButton("انزالات جوية - Airdrop", callback_data="cat_airdrop")],
+        [InlineKeyboardButton("🆔 شحن عبر ID", callback_data="menu_id")],
+        [InlineKeyboardButton("👤 شحن عبر الحساب", callback_data="menu_acc")],
         [InlineKeyboardButton("📞 التواصل والدعم", url="https://t.me/TOP1MOYASAR")],
     ]
     return InlineKeyboardMarkup(kb)
@@ -482,12 +479,34 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except:
             pass
         return
+
+    # القوائم الجديدة
+    if data == "menu_id":
+        kb = [
+            [InlineKeyboardButton("💎 شحن جواهر وعملات - ID", callback_data="cat_id_gems")],
+            [InlineKeyboardButton("🔥 Level Up Pass - ID", callback_data="cat_id_level")],
+            [InlineKeyboardButton("رجوع", callback_data="main")],
+        ]
+        await q.edit_message_text("🆔 شحن عبر ID\n\nاختار نوع الشحن:", reply_markup=InlineKeyboardMarkup(kb))
+        return
+
+    if data == "menu_acc":
+        kb = [
+            [InlineKeyboardButton("💎 شحن جواهر عبر الحساب", callback_data="cat_acc_gems")],
+            [InlineKeyboardButton("✈️ انزالات جوية - Airdrop", callback_data="cat_airdrop")],
+            [InlineKeyboardButton("رجوع", callback_data="main")],
+        ]
+        await q.edit_message_text("👤 شحن عبر الحساب\n\nاختار نوع الشحن:", reply_markup=InlineKeyboardMarkup(kb))
+        return
+
     if data.startswith("cat_"):
         cat = data[4:]
         kb = []
         for i, item in enumerate(PACKAGES[cat]):
             kb.append([InlineKeyboardButton(item[0], callback_data="item_" + cat + "_" + str(i))])
-        kb.append([InlineKeyboardButton("رجوع", callback_data="main")])
+        # زر الرجوع يرجع للقائمة اللي جاي منها
+        back = "menu_id" if cat in ["id_gems", "id_level"] else "menu_acc"
+        kb.append([InlineKeyboardButton("رجوع", callback_data=back)])
         await q.edit_message_text(CATEGORY_NAMES[cat], reply_markup=InlineKeyboardMarkup(kb))
         return
     if data.startswith("item_"):
