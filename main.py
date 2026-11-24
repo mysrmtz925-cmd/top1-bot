@@ -15,33 +15,27 @@ DB = "wallet.db"
 
 PACKAGES = {
     "id_gems": [
-        ("100💎 - 12,100", "100 جوهرة", "12,100 جنيه", "id", 12100),
-        ("200💎 - 24,200", "200 جوهرة", "24,200 جنيه", "id", 24200),
-        ("300💎 - 36,400", "300 جوهرة", "36,400 جنيه", "id", 36400),
-        ("400💎 - 48,800", "400 جوهرة", "48,800 جنيه", "id", 48800),
-        ("500💎 - 61,600", "500 جوهرة", "61,600 جنيه", "id", 61600),
-        ("1000💎 - 123,200", "1000 جوهرة", "123,200 جنيه", "id", 123200),
-        ("2120💎 - 254,400", "2120 جوهرة", "254,400 جنيه", "id", 254400),
-        ("10600💎 - 1,272,000", "10600 جوهرة", "1,272,000 جنيه", "id", 1272000),
-        ("27,000 - العضوية الأسبوعية", "العضوية الأسبوعية", "27,000 جنيه", "id", 27000),
-        ("125,000 - العضوية الشهرية", "العضوية الشهرية", "125,000 جنيه", "id", 125000),
+        ("100💎 - 12,500", "100 جوهرة", "12,500 جنيه", "id", 12500),
+        ("200💎 - 25,000", "200 جوهرة", "25,000 جنيه", "id", 25000),
+        ("500💎 - 62,500", "500 جوهرة", "62,500 جنيه", "id", 62500),
+        ("1000💎 - 125,000", "1000 جوهرة", "125,000 جنيه", "id", 125000),
+        ("28,000 - العضوية الأسبوعية", "العضوية الأسبوعية", "28,000 جنيه", "id", 28000),
+        ("136,000 - العضوية الشهرية", "العضوية الشهرية", "136,000 جنيه", "id", 136000),
     ],
     "id_level": [
-        ("6,000 - Level Up - 6 مستوى", "Level Up - 6 مستوى", "6,000 جنيه", "id", 6000),
-        ("8,000 - Level Up - 10 مستوى", "Level Up - 10 مستوى", "8,000 جنيه", "id", 8000),
-        ("8,000 - Level Up - 15 مستوى", "Level Up - 15 مستوى", "8,000 جنيه", "id", 8000),
-        ("8,000 - Level Up - 20 مستوى", "Level Up - 20 مستوى", "8,000 جنيه", "id", 8000),
-        ("8,000 - Level Up - 25 مستوى", "Level Up - 25 مستوى", "8,000 جنيه", "id", 8000),
-        ("12,000 - Level Up - 30 مستوى", "Level Up - 30 مستوى", "12,000 جنيه", "id", 12000),
+        ("7,500 - Level Up - 6 مستوى", "Level Up - 6 مستوى", "7,500 جنيه", "id", 7500),
+        ("9,000 - Level Up - 10 مستوى", "Level Up - 10 مستوى", "9,000 جنيه", "id", 9000),
+        ("9,000 - Level Up - 15 مستوى", "Level Up - 15 مستوى", "9,000 جنيه", "id", 9000),
+        ("9,000 - Level Up - 20 مستوى", "Level Up - 20 مستوى", "9,000 جنيه", "id", 9000),
+        ("9,000 - Level Up - 25 مستوى", "Level Up - 25 مستوى", "9,000 جنيه", "id", 9000),
+        ("13,500 - Level Up - 30 مستوى", "Level Up - 30 مستوى", "13,500 جنيه", "id", 13500),
     ],
     "acc_gems": [
-        ("100💎 عبر الحساب - 11,000", "100 جوهرة عبر الحساب", "11,000 جنيه", "acc", 11000),
-        ("200💎 عبر الحساب - 22,000", "200 جوهرة عبر الحساب", "22,000 جنيه", "acc", 22000),
-        ("500💎 عبر الحساب - 55,000", "500 جوهرة عبر الحساب", "55,000 جنيه", "acc", 55000),
+        ("100💎 عبر الحساب - 11,500", "100 جوهرة عبر الحساب", "11,500 جنيه", "acc", 11500),
     ],
     "airdrop": [
-        ("انزال $1 - 12,000", "انزال جوي $1", "12,000 جنيه", "acc", 12000),
-        ("انزال $2 - 24,000", "انزال جوي $2", "25,000 جنيه", "acc", 25000),
+        ("انزال $1 - 12,500", "انزال جوي $1", "12,500 جنيه", "acc", 12500),
+        ("انزال $2 - 25,000", "انزال جوي $2", "25,000 جنيه", "acc", 25000),
     ],
 }
 
@@ -224,7 +218,7 @@ async def admin_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     txt = f"📊 لوحة الأدمن - TOP 1\n\nعدد المستخدمين: {len(users)}\nإجمالي الأرصدة: {total:,} SDG\nالمحظورين: {len(blocked)}\n\nآخر 10:\n"
     for u in users[:10]:
         txt += f"- {u[2]} (@{u[1]}) - {u[3]:,} SDG - ID: {u[0]}\n"
-    txt += "\nأوامر سريعة:\n/balances - كل الأرصدة\n/add [ID] [المبلغ]\n/deduct [ID] [المبلغ]\n/msg [ID] [الرسالة] - أو ارسل صورة وتعليقها /msg [ID] [نص]\n/block [ID]\n/unblock [ID]\n/broadcast [الرسالة]"
+    txt += "\nأوامر سريعة:\n/balances - كل الأرصدة\n/add [ID] [المبلغ]\n/deduct [ID] [المبلغ]\n/msg [ID] [الرسالة]\n/block [ID]\n/unblock [ID]\n/broadcast [الرسالة]"
     await update.message.reply_text(txt, reply_markup=admin_menu_keyboard())
 
 async def balances_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -296,7 +290,7 @@ async def msg_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"✅ تم ارسال الرسالة لـ {target}")
     except Exception as e:
         print(e)
-        await update.message.reply_text("ما قدرت ارسل.\nجرب:\n/msg 123456 اهلا بيك\nأو ارسل صورة واكتب في تعليقها: /msg 123456 اهلا بيك")
+        await update.message.reply_text("ما قدرت ارسل.\nجرب:\n/msg 123456 اهلا بيك")
 
 async def block_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -451,7 +445,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await q.edit_message_text("💳 تغذية محفظتي\n\nاكتب المبلغ الداير تشحن بيهو المحفظة\nمثال: 10000\n\nاكتبو في رسالة هسي:", reply_markup=back_to_main())
         return
 
-    # اختيار طريقة الدفع لتغذية المحفظة
     if data.startswith("topup_pay_"):
         method = data.replace("topup_pay_", "")
         amount = user_state.get(user_id, {}).get("topup_amount", 0)
@@ -511,7 +504,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await q.edit_message_text(f"طلبك: {order['name']}\nالسعر: {order['price']}\n\nاختار طريقة الدفع:", reply_markup=payment_keyboard("pay"))
         return
 
-    # اختيار طريقة الدفع للطلب
     if data.startswith("pay_"):
         method = data.replace("pay_", "")
         order = user_state.get(user_id)
