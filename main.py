@@ -56,15 +56,16 @@ def payment_text(method):
         return f"ماي كاشي:\nالرقم: {MYCASHI_NUMBER}\nالاسم: {MYCASHI_NAME}"
     return f"بنكك:\nبنكك: {BANKK_NUMBER}\nالاسم: {BANKK_NAME}"
 
-def payment_keyboard(prefix="pay"):
+def payment_keyboard(prefix="pay", user_id=None):
+    bal = get_balance(user_id) if user_id else 0
     kb = [
-        [InlineKeyboardButton("🏦 بنكك", callback_data=f"{prefix}_bankak")],
-        [InlineKeyboardButton("📱 ماي كاشي", callback_data=f"{prefix}_mycashi")],
+        [InlineKeyboardButton(f"💰 الدفع بالمحفظة (رصيدك: {bal:,} SDG)", callback_data=f"{prefix}_wallet")],
+        [InlineKeyboardButton("🏦 بنكك - شحن مباشر", callback_data=f"{prefix}_bankak")],
+        [InlineKeyboardButton("📱 ماي كاشي - شحن مباشر", callback_data=f"{prefix}_mycashi")],
         [InlineKeyboardButton("رجوع", callback_data="main")],
     ]
     return InlineKeyboardMarkup(kb)
 
-# ---------- Wallet DB ----------
 def init_db():
     con = sqlite3.connect(DB)
     cur = con.cursor()
@@ -135,7 +136,6 @@ def parse_price(price_text):
     nums = re.findall(r'\d+', price_text.replace(",", ""))
     return int(nums[0]) if nums else 0
 
-# ---------- Menus ----------
 def main_menu(user_id=None):
     bal = get_balance(user_id) if user_id else 0
     kb = [
@@ -182,7 +182,6 @@ def topup_admin_keyboard(user_id, amount):
     ]
     return InlineKeyboardMarkup(kb)
 
-# ---------- Handlers ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     ensure_user(user)
@@ -480,7 +479,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
         return
 
-    # القوائم الجديدة
     if data == "menu_id":
         kb = [
             [InlineKeyboardButton("💎 شحن جواهر وعملات - ID", callback_data="cat_id_gems")],
@@ -504,7 +502,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         kb = []
         for i, item in enumerate(PACKAGES[cat]):
             kb.append([InlineKeyboardButton(item[0], callback_data="item_" + cat + "_" + str(i))])
-        # زر الرجوع يرجع للقائمة اللي جاي منها
         back = "menu_id" if cat in ["id_gems", "id_level"] else "menu_acc"
         kb.append([InlineKeyboardButton("رجوع", callback_data=back)])
         await q.edit_message_text(CATEGORY_NAMES[cat], reply_markup=InlineKeyboardMarkup(kb))
@@ -523,7 +520,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not order:
             await q.edit_message_text("اختار باقة أولاً", reply_markup=main_menu(user_id))
             return
-        await q.edit_message_text(f"طلبك: {order['name']}\nالسعر: {order['price']}\n\nاختار طريقة الدفع:", reply_markup=payment_keyboard("pay"))
+        await q.edit_message_text(f"طلبك: {order['name']}\nالسعر: {order['price']}\n\nاختار طريقة الدفع:", reply_markup=payment_keyboard("pay", user_id))
         return
 
     if data.startswith("pay_"):
@@ -534,6 +531,32 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         order_method = order["method"]
         cat = order.get("cat", "")
+        price_num = order.get("price_num", 0)
+
+        if method == "wallet":
+            bal = get_balance(user_id)
+            if bal < price_num:
+                kb = [
+                    [InlineKeyboardButton("💳 تغذية محفظتي", callback_data="topup_start")],
+                    [InlineKeyboardButton("رجوع", callback_data="main")],
+                ]
+                await q.edit_message_text(f"❌ رصيدك غير كافي\n\nطلبك: {order['name']}\nالسعر: {order['price']}\nرصيدك الحالي: {bal:,} SDG\n\nغذي محفظتك أولاً وبعدين أطلب تاني، أو ادفع مباشر بنكك / ماي كاشي", reply_markup=InlineKeyboardMarkup(kb))
+                return
+            new_bal = change_balance(user_id, -price_num)
+            user_state[user_id]["stage"] = "waiting_details"
+            user_state[user_id]["pay_method"] = "wallet"
+            user_state[user_id]["waiting"] = True
+            header = f"💰 طلب جديد - دفع بالمحفظة!\nالزبون: {q.from_user.first_name}\nID: {user_id}\nالباقة: {order['name']}\nالسعر: {order['price']}\nرصيدو بعد الخصم: {new_bal:,} SDG\n"
+            await context.bot.send_message(chat_id=ADMIN_ID, text=header + "منتظر بيانات الزبون...", reply_markup=admin_keyboard(user_id, price_num))
+            if cat == "airdrop":
+                txt = "✅ تم الدفع من محفظتك\n\nهسي رسل البريد الالكتروني وكلمة السر مع بعض في رسالة واحدة 👇\n\nمثال:\nbasomaa891@gmail.com\nكلمة السر: 123456"
+            elif order_method == "id":
+                txt = "✅ تم الدفع من محفظتك\n\nهسي رسل الـ ID حقك في رسالة براهو\nمثال: ID: 123456789"
+            else:
+                txt = "✅ تم الدفع من محفظتك\n\nهسي رسل البريد الالكتروني وكلمة السر مع بعض في رسالة واحدة 👇\n\nمثال:\nxxx@gmail.com\nكلمة السر: xxx"
+            await q.edit_message_text(txt, reply_markup=back_to_main())
+            return
+
         txt = "طلبك: " + order["name"] + "\nالسعر: " + order["price"] + f"\nطريقة الدفع: {'ماي كاشي' if method=='mycashi' else 'بنكك'}\n\nحول على:\n{payment_text(method)}\n\n"
         if cat == "airdrop":
             txt += "بعد التحويل رسل لينا:\n1- صورة اشعار التحويل\n2- بعدها رسل البريد الالكتروني وكلمة السر مع بعض في رسالة واحدة\n\nمثال:\nbasomaa891@gmail.com\nكلمة السر: 123456"
@@ -668,7 +691,7 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         amount = int(nums[0])
         user_state[user_id] = {"waiting_topup_pay_choice": True, "topup_amount": amount}
-        await update.message.reply_text(f"تمام 👌\nداير تشحن {amount:,} SDG\n\nاختار طريقة الدفع:", reply_markup=payment_keyboard("topup_pay"))
+        await update.message.reply_text(f"تمام 👌\nداير تشحن {amount:,} SDG\n\nاختار طريقة الدفع:", reply_markup=payment_keyboard("topup_pay", user_id))
         return
 
     if state.get("waiting_topup_receipt"):
