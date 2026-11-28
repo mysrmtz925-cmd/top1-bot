@@ -13,39 +13,32 @@ MYCASHI_NAME = "ميسر معتز صالح"
 ADMIN_ID = 7269956912
 DB = "wallet.db"
 
-SUPPORT_TELEGRAM = "TOP1MOYASAR"
-SUPPORT_WHATSAPP_NUMBERS = [
-    "249127291843",
-    "249121809809",
-    "249112729318",
-]
-
 PACKAGES = {
     "id_gems": [
-        ("100💎 - 11,800", "100 جوهرة", "11,800 جنيه", "id", 11800),
-        ("200💎 - 23,600", "200 جوهرة", "23,600 جنيه", "id", 23600),
-        ("500💎 - 59,000", "500 جوهرة", "59,000 جنيه", "id", 59000),
-        ("1000💎 - 118,000", "1000 جوهرة", "118,000 جنيه", "id", 118000),
-        ("26,000 - العضوية الأسبوعية", "العضوية الأسبوعية", "26,000 جنيه", "id", 26000),
-        ("130,000 - العضوية الشهرية", "العضوية الشهرية", "130,000 جنيه", "id", 130000),
+        ("100💎 - 12,500", "100 جوهرة", "12,500 جنيه", "id", 12500),
+        ("200💎 - 25,000", "200 جوهرة", "25,000 جنيه", "id", 25000),
+        ("500💎 - 62,500", "500 جوهرة", "62,500 جنيه", "id", 62500),
+        ("1000💎 - 125,000", "1000 جوهرة", "125,000 جنيه", "id", 125000),
+        ("28,000 - العضوية الأسبوعية", "العضوية الأسبوعية", "28,000 جنيه", "id", 28000),
+        ("136,000 - العضوية الشهرية", "العضوية الشهرية", "136,000 جنيه", "id", 136000),
     ],
     "id_level": [
-        ("6,500 - Level Up - 6 مستوى", "Level Up - 6 مستوى", "6,500 جنيه", "id", 6500),
-        ("8,000 - Level Up - 10 مستوى", "Level Up - 10 مستوى", "8,000 جنيه", "id", 8000),
-        ("8,000 - Level Up - 15 مستوى", "Level Up - 15 مستوى", "8,000 جنيه", "id", 8000),
-        ("8,000 - Level Up - 20 مستوى", "Level Up - 20 مستوى", "8,000 جنيه", "id", 8000),
-        ("8,000 - Level Up - 25 مستوى", "Level Up - 25 مستوى", "8,000 جنيه", "id", 8000),
-        ("12,500 - Level Up - 30 مستوى", "Level Up - 30 مستوى", "12,500 جنيه", "id", 12500),
+        ("7,500 - Level Up - 6 مستوى", "Level Up - 6 مستوى", "7,500 جنيه", "id", 7500),
+        ("9,000 - Level Up - 10 مستوى", "Level Up - 10 مستوى", "9,000 جنيه", "id", 9000),
+        ("9,000 - Level Up - 15 مستوى", "Level Up - 15 مستوى", "9,000 جنيه", "id", 9000),
+        ("9,000 - Level Up - 20 مستوى", "Level Up - 20 مستوى", "9,000 جنيه", "id", 9000),
+        ("9,000 - Level Up - 25 مستوى", "Level Up - 25 مستوى", "9,000 جنيه", "id", 9000),
+        ("13,500 - Level Up - 30 مستوى", "Level Up - 30 مستوى", "13,500 جنيه", "id", 13500),
     ],
     "acc_gems": [
-        ("100💎 عبر الحساب - 11,000", "100 جوهرة عبر الحساب", "11,000 جنيه", "acc", 11000),
-        ("200💎 عبر الحساب - 22,000", "200 جوهرة عبر الحساب", "22,000 جنيه", "acc", 22000),
-        ("500💎 عبر الحساب - 55,000", "500 جوهرة عبر الحساب", "55,000 جنيه", "acc", 55000),
-        ("1000💎 عبر الحساب - 110,000", "1000 جوهرة عبر الحساب", "110,000 جنيه", "acc", 110000),
+        ("100💎 عبر الحساب - 11,500", "100 جوهرة عبر الحساب", "11,500 جنيه", "acc", 11500),
+        ("200💎 عبر الحساب - 23,000", "200 جوهرة عبر الحساب", "23,000 جنيه", "acc", 23000),
+        ("500💎 عبر الحساب - 57,500", "500 جوهرة عبر الحساب", "57,500 جنيه", "acc", 57500),
+        ("1000💎 عبر الحساب - 115,000", "1000 جوهرة عبر الحساب", "115,000 جنيه", "acc", 115000),
     ],
     "airdrop": [
-        ("انزال $1 - 12,000", "انزال جوي $1", "12,000 جنيه", "acc", 12000),
-        ("انزال $2 - 24,000", "انزال جوي $2", "24,000 جنيه", "acc", 24000),
+        ("انزال $1 - 12,500", "انزال جوي $1", "12,500 جنيه", "acc", 12500),
+        ("انزال $2 - 25,000", "انزال جوي $2", "25,000 جنيه", "acc", 25000),
     ],
 }
 
@@ -69,14 +62,6 @@ def payment_keyboard(prefix="pay", user_id=None):
         [InlineKeyboardButton(f"💰 الدفع بالمحفظة (رصيدك: {bal:,} SDG)", callback_data=f"{prefix}_wallet")],
         [InlineKeyboardButton("🏦 بنكك - شحن مباشر", callback_data=f"{prefix}_bankak")],
         [InlineKeyboardButton("📱 ماي كاشي - شحن مباشر", callback_data=f"{prefix}_mycashi")],
-        [InlineKeyboardButton("رجوع", callback_data="main")],
-    ]
-    return InlineKeyboardMarkup(kb)
-
-def topup_payment_keyboard(prefix="topup_pay"):
-    kb = [
-        [InlineKeyboardButton("🏦 بنكك", callback_data=f"{prefix}_bankak")],
-        [InlineKeyboardButton("📱 ماي كاشي", callback_data=f"{prefix}_mycashi")],
         [InlineKeyboardButton("رجوع", callback_data="main")],
     ]
     return InlineKeyboardMarkup(kb)
@@ -157,7 +142,7 @@ def main_menu(user_id=None):
         [InlineKeyboardButton(f"💰 محفظتي : {bal:,} SDG", callback_data="my_wallet")],
         [InlineKeyboardButton("🆔 شحن عبر ID", callback_data="menu_id")],
         [InlineKeyboardButton("👤 شحن عبر الحساب", callback_data="menu_acc")],
-        [InlineKeyboardButton("📞 التواصل والدعم", callback_data="support")],
+        [InlineKeyboardButton("📞 التواصل والدعم", url="https://t.me/TOP1MOYASAR")],
     ]
     return InlineKeyboardMarkup(kb)
 
@@ -201,7 +186,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     ensure_user(user)
     if is_blocked(user.id):
-        txt = f"🚫 تم حظرك من استخدام البوت.\nراسل الدعم لو شايف ده غلط: @{SUPPORT_TELEGRAM}"
+        txt = "🚫 تم حظرك من استخدام البوت.\nراسل الدعم لو شايف ده غلط: @TOP1MOYASAR"
         if update.message:
             await update.message.reply_text(txt)
         else:
@@ -315,7 +300,7 @@ async def block_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         set_blocked(target, True)
         await update.message.reply_text(f"🚫 تم حظر المستخدم {target} من البوت.")
         try:
-            await context.bot.send_message(target, f"🚫 تم حظرك من استخدام بوت TOP 1.\nراسل الدعم لو شايف ده غلط: @{SUPPORT_TELEGRAM}")
+            await context.bot.send_message(target, "🚫 تم حظرك من استخدام بوت TOP 1.\nراسل الدعم لو شايف ده غلط: @TOP1MOYASAR")
         except:
             pass
     except:
@@ -446,34 +431,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "main":
         await start(update, context)
         return
-
-    if data == "support":
-        text = (
-            "📞 التواصل والدعم - TOP 1 👑\n\n"
-            "لو عندك مشكلة في الشحن او المحفظة تواصل معنا على أي رقم:\n\n"
-            "واتساب 1: 0127291843\n"
-            "واتساب 2: 0121809809\n"
-            "واتساب 3: 0112729318\n"
-            f"تلغرام: @{SUPPORT_TELEGRAM}\n\n"
-            "بنرد عليك في اقرب وقت ⚡"
-        )
-        kb = [
-            [InlineKeyboardButton("💬 واتساب 1", url=f"https://wa.me/{SUPPORT_WHATSAPP_NUMBERS[0]}")],
-            [InlineKeyboardButton("💬 واتساب 2", url=f"https://wa.me/{SUPPORT_WHATSAPP_NUMBERS[1]}")],
-            [InlineKeyboardButton("💬 واتساب 3", url=f"https://wa.me/{SUPPORT_WHATSAPP_NUMBERS[2]}")],
-            [InlineKeyboardButton("✈️ تلغرام", url=f"https://t.me/{SUPPORT_TELEGRAM}")],
-            [InlineKeyboardButton("🔙 الرئيسية", callback_data="main")],
-        ]
-        await q.edit_message_text(text, reply_markup=InlineKeyboardMarkup(kb))
-        return
-
     if data == "my_wallet":
         bal = get_balance(user_id)
         kb = [
             [InlineKeyboardButton("💳 تغذية محفظتي", callback_data="topup_start")],
             [InlineKeyboardButton("الرئيسية", callback_data="main")]
         ]
-        await q.edit_message_text(f"💰 محفظتي\n\nرصيدك: {bal:,} SDG\n\nدوس تغذية عشان تشحن.\nالتغذية عبر بنكك وماي كاشي بس.", reply_markup=InlineKeyboardMarkup(kb))
+        await q.edit_message_text(f"💰 محفظتي\n\nرصيدك: {bal:,} SDG\n\nدوس تغذية عشان تشحن.", reply_markup=InlineKeyboardMarkup(kb))
         return
     if data == "topup_start":
         user_state[user_id] = {"waiting_topup_amount": True}
@@ -482,9 +446,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data.startswith("topup_pay_"):
         method = data.replace("topup_pay_", "")
-        if method == "wallet":
-            await q.edit_message_text("❌ شحن المحفظة بيكون عبر بنكك وماي كاشي بس", reply_markup=back_to_main())
-            return
         amount = user_state.get(user_id, {}).get("topup_amount", 0)
         user_state[user_id] = {"waiting_topup_receipt": True, "topup_amount": amount, "pay_method": method}
         await q.edit_message_text(f"تمام 👌\nداير تشحن {amount:,} SDG\n\nحول على:\n{payment_text(method)}\n\nبعد التحويل رسل صورة الاشعار هسي:", reply_markup=back_to_main())
@@ -585,7 +546,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_state[user_id]["stage"] = "waiting_details"
             user_state[user_id]["pay_method"] = "wallet"
             user_state[user_id]["waiting"] = True
-            user_state[user_id]["balance_after"] = new_bal
+            header = f"💰 طلب جديد - دفع بالمحفظة!\nالزبون: {q.from_user.first_name}\nID: {user_id}\nالباقة: {order['name']}\nالسعر: {order['price']}\nرصيدو بعد الخصم: {new_bal:,} SDG\n"
+            await context.bot.send_message(chat_id=ADMIN_ID, text=header + "منتظر بيانات الزبون...", reply_markup=admin_keyboard(user_id, price_num))
             if cat == "airdrop":
                 txt = "✅ تم الدفع من محفظتك\n\nهسي رسل البريد الالكتروني وكلمة السر مع بعض في رسالة واحدة 👇\n\nمثال:\nbasomaa891@gmail.com\nكلمة السر: 123456"
             elif order_method == "id":
@@ -729,7 +691,7 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         amount = int(nums[0])
         user_state[user_id] = {"waiting_topup_pay_choice": True, "topup_amount": amount}
-        await update.message.reply_text(f"تمام 👌\nداير تشحن {amount:,} SDG\n\nاختار طريقة الدفع:", reply_markup=topup_payment_keyboard("topup_pay"))
+        await update.message.reply_text(f"تمام 👌\nداير تشحن {amount:,} SDG\n\nاختار طريقة الدفع:", reply_markup=payment_keyboard("topup_pay", user_id))
         return
 
     if state.get("waiting_topup_receipt"):
@@ -760,8 +722,13 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if stage == "waiting_photo":
         if update.message.photo:
-            user_state[user_id]["photo_id"] = update.message.photo[-1].file_id
-            user_state[user_id]["photo_caption"] = update.message.caption or ""
+            caption = update.message.caption or ""
+            header = "طلب جديد!\nالزبون: " + user.first_name + "\nيوزر التليجرام: " + str(user_id) + "\nالباقة: " + order["name"] + "\nالسعر: " + order["price"] + "\n"
+            header += "الطريقة: عبر ID\n" if method == "id" and cat != "airdrop" else "الطريقة: عبر الحساب / انزال\n"
+            header += f"طريقة الدفع: {'ماي كاشي' if pay_method=='mycashi' else 'بنكك'}\n"
+            header += f"رصيد محفظتو: {get_balance(user_id):,} SDG\n"
+            header += "بيانات الزبون:\n"
+            await context.bot.send_photo(chat_id=ADMIN_ID, photo=update.message.photo[-1].file_id, caption=header + "صورة اشعار + نص: " + caption, reply_markup=admin_keyboard(user_id, price_num))
             user_state[user_id]["stage"] = "waiting_details"
             if cat == "airdrop":
                 await update.message.reply_text("وصلت صورة الاشعار ✅\n\nهسي رسل البريد الالكتروني وكلمة السر مع بعض في رسالة واحدة 👇\n\nمثال:\nbasomaa891@gmail.com\nكلمة السر: 123456")
@@ -778,21 +745,8 @@ async def receive_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if update.message.photo:
             await update.message.reply_text("خلاص وصلت الصورة، هسي رسل البيانات في رسالة نصية")
             return
-        header = "طلب جديد!\nالزبون: " + user.first_name + f"\nيوزر التليجرام: @{user.username or ''} - ID: {user_id}\nالباقة: " + order["name"] + "\nالسعر: " + order["price"] + "\n"
-        header += "الطريقة: عبر ID\n" if method == "id" and cat != "airdrop" else "الطريقة: عبر الحساب / انزال\n"
-        if pay_method == "wallet":
-            header += f"طريقة الدفع: المحفظة\nرصيدو بعد الخصم: {order.get('balance_after', get_balance(user_id)):,} SDG\n"
-        else:
-            header += f"طريقة الدفع: {'ماي كاشي' if pay_method=='mycashi' else 'بنكك'}\nرصيد محفظتو: {get_balance(user_id):,} SDG\n"
-        header += "بيانات الزبون:\n" + update.message.text
-        if order.get("photo_caption"):
-            header += "\nنص الصورة: " + order["photo_caption"]
-
-        if order.get("photo_id"):
-            await context.bot.send_photo(chat_id=ADMIN_ID, photo=order["photo_id"], caption=header, reply_markup=admin_keyboard(user_id, price_num))
-        else:
-            await context.bot.send_message(chat_id=ADMIN_ID, text=header, reply_markup=admin_keyboard(user_id, price_num))
-
+        header2 = f"📩 بيانات الزبون - {order['name']}\nالزبون: {user.first_name} - ID: {user_id}\n"
+        await context.bot.send_message(chat_id=ADMIN_ID, text=header2 + update.message.text, reply_markup=admin_keyboard(user_id, price_num))
         await update.message.reply_text("تم استلام طلبك! حنراجع التحويل ونشحن ليك ✅")
         user_state[user_id] = {}
         return
